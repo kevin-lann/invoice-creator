@@ -1,5 +1,5 @@
 export type Invoice = {
-  invoiceNo: number,
+  invoiceNo: string,
   date: string,
   customerInfo: {
     name?: string,
@@ -20,7 +20,7 @@ export type Invoice = {
 }
 
 export const baseInvoice: Invoice = {
-  invoiceNo: 20241220,
+  invoiceNo: Date.now().toString(),
   date: new Date().toDateString().slice(4),
   customerInfo: {
     name: "John Doe",

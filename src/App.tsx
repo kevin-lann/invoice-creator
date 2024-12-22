@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { Invoice, baseInvoice } from './models/Invoice'
 import { contactInfo } from './constants/contactInfo'
 import { useForm, SubmitHandler, useFieldArray } from 'react-hook-form'
 import { FileDown, Plus, X } from 'lucide-react'
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const currencyFormatter = new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -14,15 +16,79 @@ function App() {
 
   const [invoice, setInvoice] = useState<Invoice>(baseInvoice)
   const [currentItemCount, setCurrentItemCount] = useState(0)
-  const {register, handleSubmit, watch, formState: { errors }, getValues, setValue} = useForm<Invoice>()
+  const {register, handleSubmit, watch, formState: { errors: errs }, getValues, setValue} = useForm<Invoice>()
+  const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   const items = watch("items");
   const amounts = watch("items")?.map(item => item.amount) ?? [];
 
-  const onSubmit: SubmitHandler<Invoice> = (data) => {
-    // export pdf
-    console.log(data)
+  const printRef = useRef<HTMLDivElement>(null)
+
+  const setDefaultsValues= () => {
+    if (!getValues('date')) 
+      setValue('date', new Date().toDateString().slice(4))
+    if (!getValues('invoiceNo'))
+      setValue('invoiceNo', Date.now().toString())
   }
+  setDefaultsValues() 
+
+  const handleDownloadPdf = async (invoice: Invoice) => {
+    console.log("Beginning pdf gen")
+    const element = printRef.current
+    if (!element)
+      return;
+    
+    const canvas = await html2canvas(element, {
+      scale: 1.75,
+      useCORS: true,
+      height: element.offsetHeight,
+      onclone: function(clonedDoc) {
+        // Find all inputs in cloned document and adjust their height
+        Array.from(clonedDoc.getElementsByTagName('input')).forEach(input => {
+          input.style.height = "24px";
+          input.style.padding = "0px";
+          input.style.borderRadius = "0px"
+        });
+      }
+    })
+    const data = canvas.toDataURL("image/png")
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "px",
+      format: "a4",
+    })
+
+    const imgProperties = pdf.getImageProperties(data)
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = (imgProperties.height * pdfWidth)  / imgProperties.width; // scale image
+
+    pdf.addImage(data, "PNG", 0, 0, pdfWidth, pdfHeight)
+    pdf.save(`invoice-${invoice.customerInfo?.name}-${invoice?.date?.replace(/\s/g, '-')}`)
+    console.log("Finished generating pdf")
+  }
+
+  // Method 3: Use both success and error callbacks
+  const onSubmit = handleSubmit(
+    (data: Invoice) => {
+      setErrors({})
+      console.log('Success handler called', data);
+      handleDownloadPdf(data);
+    },
+    (errors) => {
+      setErrors({})
+      console.log('Form has errors:', errors);
+      const newErrors: { [key: string]: string } = {}
+      if (errors?.customerInfo?.address) {
+        newErrors.address = "Please enter an address"
+      }
+      if (errors?.customerInfo?.city) {
+        newErrors.city = "Please enter a city"
+      }
+      console.log("Errors: ", newErrors)
+      setErrors(newErrors)
+    }
+  );
 
   // Calculate amount for each row
   const calculateAmount = (index: number) => {
@@ -30,7 +96,7 @@ function App() {
     const quantity = values?.quantity ?? 0;
     const unitPrice = values?.unitPrice ?? 0;
     return quantity * unitPrice;
-};
+  };
 
   const calculatedTotal = useMemo(() => {
     return amounts?.reduce((sum, amount) => sum + amount, 0) ?? 0
@@ -83,8 +149,8 @@ function App() {
   return (
     <>
       <div className="w-full flex flex-col items-center min-h-screen">
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="bg-white shadow-lg rounded-lg p-8 w-[8.5in] max-w-2xl flex flex-col">
+        <form onSubmit={onSubmit}>
+          <div ref={printRef} className="bg-white shadow-lg rounded-lg p-8 w-[8.5in] max-w-2xl flex flex-col">
             
               <div id="export" className="flex flex-col pb-4">
 
@@ -107,19 +173,19 @@ function App() {
                   <div className="flex flex-col">
                     <input 
                       type="text"
-                      className="text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                      className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white`}
                       placeholder="Enter customer name"
                       {...register("customerInfo.name")}
                     />
                     <input 
                       type="text"
-                      className="text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                      className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white ${errors.address !== undefined ? "border border-2 border-red-500" : ""}`}
                       placeholder="Enter customer address"
                       {...register("customerInfo.address", {required: true})}
                     />
                     <input 
                       type="text"
-                      className="text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                      className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white ${errors.city !== undefined ? "border border-2 border-red-500" : ""}`}
                       placeholder="Enter city"
                       {...register("customerInfo.city", {required: true})}
                     />
@@ -127,14 +193,14 @@ function App() {
                   <div className="flex flex-col">
                     <input 
                       type="tel"
-                      className="text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                      className="h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
                       placeholder="Enter customer phone number"
                       {...register("customerInfo.phone")}
                     />
                     <input 
                       type="email"
-                      className="text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
-                      placeholder="Enter customer phone number"
+                      className="h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                      placeholder="Enter customer email"
                       {...register("customerInfo.email")}
                     />
                   </div>
@@ -154,7 +220,7 @@ function App() {
                     <textarea 
                         className="text-slate-800 text-sm outline-none py-1 px-2 hover:bg-slate-100 hover:py-2 placeholder:italic placeholder:text-gray-500 border border-2 border-gray-100 resize-none"
                         placeholder=""
-                        {...register("customerInfo.address")}
+                        {...register("recommendation")}
                       />
                   </div>
                 </div>
@@ -184,7 +250,7 @@ function App() {
                             <input 
                               {...register(`items.${index}.name`)}
                               type="text"
-                              className="w-full text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                              className="h-[30px] w-full text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
                               placeholder="Item description"
                             />
                           </td>
@@ -193,7 +259,7 @@ function App() {
                               {...register(`items.${index}.quantity`, {valueAsNumber: true })}
                               type="number"
                               defaultValue={0}
-                              className="w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                              className="h-[30px] w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
                             />
                           </td>
                           <td className="border p-2">
@@ -201,7 +267,7 @@ function App() {
                               {...register(`items.${index}.unitPrice`, {valueAsNumber: true })}
                               type="number"
                               defaultValue={0}
-                              className="w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                              className="h-[30px] w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
                             />
                           </td>
                           <td className="border p-2 text-right text-slate-800 text-sm py-1 hover:bg-slate-100 hover:pl-2 hover:py-2">
@@ -222,7 +288,7 @@ function App() {
 
           <div className="w-full flex justify-center p-8 gap-4">
             <button 
-              className="bg-blue-600 text-white text-sm p-3 rounded-md flex gap-4 align-center" 
+              className="bg-blue-600 text-white text-sm p-3 rounded-md flex gap-4 align-center hover:bg-blue-500 hover:shadow-xl active:scale-[.8]" 
               type="submit"
             >
               <div><FileDown size={20}/></div>
@@ -230,9 +296,9 @@ function App() {
             </button>
 
             <button 
-              className="bg-blue-600 text-white text-sm p-3 rounded-md flex gap-4 align-center" 
-              type="submit"
+              className="bg-blue-600 text-white text-sm p-3 rounded-md flex gap-4 align-center hover:bg-blue-500 hover:shadow-xl active:scale-[.8]" 
               onClick={() => handleAddItem()}
+              type="button"
             >
               <div><Plus size={20}/></div>
               <div>Add new item</div>
