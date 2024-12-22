@@ -3,9 +3,11 @@ import './App.css'
 import { Invoice, baseInvoice } from './models/Invoice'
 import { contactInfo } from './constants/contactInfo'
 import { useForm, SubmitHandler, useFieldArray } from 'react-hook-form'
-import { FileDown, Plus, X } from 'lucide-react'
+import { FileDown, Import, Plus, Save, X } from 'lucide-react'
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { toPdf } from './utils/toPdf'
+import { toJson } from './utils/toJson'
 
 const currencyFormatter = new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -32,40 +34,16 @@ function App() {
   }
   setDefaultsValues() 
 
+  const handleExportJson = (invoice: Invoice) => {
+    toJson(invoice, `invoice-${invoice.customerInfo?.name}-${invoice?.date?.replace(/\s/g, '-')}`)
+  }
+
   const handleDownloadPdf = async (invoice: Invoice) => {
-    console.log("Beginning pdf gen")
     const element = printRef.current
     if (!element)
       return;
     
-    const canvas = await html2canvas(element, {
-      scale: 1.75,
-      useCORS: true,
-      height: element.offsetHeight,
-      onclone: function(clonedDoc) {
-        // Find all inputs in cloned document and adjust their height
-        Array.from(clonedDoc.getElementsByTagName('input')).forEach(input => {
-          input.style.height = "24px";
-          input.style.padding = "0px";
-          input.style.borderRadius = "0px"
-        });
-      }
-    })
-    const data = canvas.toDataURL("image/png")
-
-    const pdf = new jsPDF({
-      orientation: "portrait",
-      unit: "px",
-      format: "a4",
-    })
-
-    const imgProperties = pdf.getImageProperties(data)
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = (imgProperties.height * pdfWidth)  / imgProperties.width; // scale image
-
-    pdf.addImage(data, "PNG", 0, 0, pdfWidth, pdfHeight)
-    pdf.save(`invoice-${invoice.customerInfo?.name}-${invoice?.date?.replace(/\s/g, '-')}`)
-    console.log("Finished generating pdf")
+    await toPdf(element, `invoice-${invoice.customerInfo?.name}-${invoice?.date?.replace(/\s/g, '-')}`)
   }
 
   // Method 3: Use both success and error callbacks
@@ -286,7 +264,7 @@ function App() {
               </div>
           </div>
 
-          <div className="w-full flex justify-center p-8 gap-4">
+          <div className="relative w-full flex justify-center p-8 gap-4">
             <button 
               className="bg-blue-600 text-white text-sm p-3 rounded-md flex gap-4 align-center hover:bg-blue-500 hover:shadow-xl active:scale-[.8]" 
               type="submit"
@@ -303,6 +281,23 @@ function App() {
               <div><Plus size={20}/></div>
               <div>Add new item</div>
             </button>
+            <div className="absolute right-0 flex">
+              <button
+                className="p-2 text-gray-600"
+                type="button"
+                onClick={() => handleExportJson(getValues())}
+              >
+                <Save size={20} />
+              </button>
+              <button
+                className="p-2 text-gray-600"
+                type="button"
+                onClick={() => handleExportJson(getValues())}
+              >
+                <Import size={20} />
+              </button>
+            </div>
+            
           </div>
         </form>
       </div>
