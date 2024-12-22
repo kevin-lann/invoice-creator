@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { Invoice, baseInvoice } from './models/Invoice'
 import { contactInfo } from './constants/contactInfo'
 import { useForm, SubmitHandler, useFieldArray } from 'react-hook-form'
-import { FileDown, Plus } from 'lucide-react'
+import { FileDown, Plus, X } from 'lucide-react'
+
+const currencyFormatter = new Intl.NumberFormat('en-CA', {
+  style: 'currency',
+  currency: 'CAD',
+});
 
 function App() {
 
@@ -12,6 +17,7 @@ function App() {
   const {register, handleSubmit, watch, formState: { errors }, getValues, setValue} = useForm<Invoice>()
 
   const items = watch("items");
+  const amounts = watch("items")?.map(item => item.amount) ?? [];
 
   const onSubmit: SubmitHandler<Invoice> = (data) => {
     // export pdf
@@ -20,10 +26,15 @@ function App() {
 
   // Calculate amount for each row
   const calculateAmount = (index: number) => {
-    const quantity = items[index]?.quantity ?? 0;
-    const unitPrice = items[index]?.unitPrice ?? 0;
+    const values = getValues(`items.${index}`);
+    const quantity = values?.quantity ?? 0;
+    const unitPrice = values?.unitPrice ?? 0;
     return quantity * unitPrice;
-  };
+};
+
+  const calculatedTotal = useMemo(() => {
+    return amounts?.reduce((sum, amount) => sum + amount, 0) ?? 0
+  }, [amounts])
 
   const handleAddItem = () => {
     const currentList = getValues('items') || [];
@@ -55,15 +66,18 @@ function App() {
   // Watch specific fields for changes
   useEffect(() => {
     const subscription = watch((value, { name }) => {
-      if (name?.includes('quantity') || name?.includes('unitPrice')) {
-        const index = parseInt(name.split('.')[1]); // Get the row index
-        const amount = calculateAmount(index);
-        setValue(`items.${index}.amount`, amount);
-      }
+        if (name?.includes('quantity') || name?.includes('unitPrice')) {
+            const index = parseInt(name.split('.')[1]); // Get the row index
+            const amount = calculateAmount(index);
+            setValue(`items.${index}.amount`, amount, {
+                shouldDirty: true,
+                shouldTouch: true,
+            });
+        }
     });
     
     return () => subscription.unsubscribe();
-  }, [watch, setValue])
+}, [watch, setValue, getValues]);
                 
               
   return (
@@ -146,52 +160,66 @@ function App() {
                 </div>
 
                 <label className="mr-2 text-sm font-bold text-lg mb-2">Materials and Parts: </label>
-<div className="w-full overflow-x-auto"> {/* Add overflow handling */}
-  <table className="w-full text-sm mb-4 table-fixed"> {/* Add table-fixed */}
-    <thead>
-      <tr className="bg-gray-100">
-        <th className="border p-2 text-left w-1/2">Description</th> {/* Set relative widths */}
-        <th className="border p-2 text-right w-1/6">Quantity</th>
-        <th className="border p-2 text-right w-1/6">Unit Price</th>
-        <th className="border p-2 text-right w-1/6">Total</th>
-      </tr>
-    </thead>
-    <tbody>
-      {getValues("items")?.map((item, index) => (
-        <tr key={item.id}>
-          <td className="border p-2">
-            <input 
-              {...register(`items.${index}.name`)}
-              type="text"
-              className="w-full text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
-              placeholder="Item description"
-            />
-          </td>
-          <td className="border p-2">
-            <input 
-              {...register(`items.${index}.quantity`)}
-              type="number"
-              className="w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
-            />
-          </td>
-          <td className="border p-2">
-            <input 
-              {...register(`items.${index}.unitPrice`)}
-              type="number"
-              className="w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
-            />
-          </td>
-          <td className="border p-2 text-right text-slate-800 text-sm py-1 hover:bg-slate-100 hover:pl-2 hover:py-2">
-            ${calculateAmount(index).toLocaleString()}
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+                <div className="w-full"> 
+                  <table className="w-full text-sm mb-4 table-fixed"> 
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border p-2 text-left w-1/2">Description</th> 
+                        <th className="border p-2 text-right w-1/6">Quantity</th>
+                        <th className="border p-2 text-right w-1/6">Unit Price</th>
+                        <th className="border p-2 text-right w-1/6">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getValues("items")?.map((item, index) => (
+                        <tr key={item.id} className="relative group">
+                          <td className="border p-2">
+                            <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity top-4 -right-5 cursor-pointer">
+                              <X 
+                                size={16} 
+                                className="text-gray-500 hover:text-red-500"
+                                onClick={() => handleRemoveItem(index)}
+                              />
+                            </div>
+                            <input 
+                              {...register(`items.${index}.name`)}
+                              type="text"
+                              className="w-full text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                              placeholder="Item description"
+                            />
+                          </td>
+                          <td className="border p-2">
+                            <input 
+                              {...register(`items.${index}.quantity`, {valueAsNumber: true })}
+                              type="number"
+                              defaultValue={0}
+                              className="w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                            />
+                          </td>
+                          <td className="border p-2">
+                            <input 
+                              {...register(`items.${index}.unitPrice`, {valueAsNumber: true })}
+                              type="number"
+                              defaultValue={0}
+                              className="w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                            />
+                          </td>
+                          <td className="border p-2 text-right text-slate-800 text-sm py-1 hover:bg-slate-100 hover:pl-2 hover:py-2">
+                            {currencyFormatter.format(calculateAmount(index))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="w-full flex justify-end pr-2">
+
+                    <label className="text-sm font-bold">Total: {currencyFormatter.format(calculatedTotal)}</label>
+                  </div>
+                </div>
 
               </div>
           </div>
+
           <div className="w-full flex justify-center p-8 gap-4">
             <button 
               className="bg-blue-600 text-white text-sm p-3 rounded-md flex gap-4 align-center" 
