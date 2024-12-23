@@ -3,7 +3,7 @@ import './App.css'
 import { Invoice, baseInvoice } from './models/Invoice'
 import { contactInfo } from './constants/contactInfo'
 import { useForm } from 'react-hook-form'
-import { FileDown, Import, Plus, Save, Upload, X } from 'lucide-react'
+import { FileDown, Plus, Save, Upload, X } from 'lucide-react'
 import { toPdf } from './utils/pdfConverter'
 import { fromJson, toJson } from './utils/jsonConverter'
 
@@ -14,20 +14,18 @@ const currencyFormatter = new Intl.NumberFormat('en-CA', {
 
 function App() {
 
-  const [invoice, setInvoice] = useState<Invoice>(baseInvoice)
+  const [invoice] = useState<Invoice>(baseInvoice)
   const [currentItemCount, setCurrentItemCount] = useState(0)
   const {
     register, 
     handleSubmit, 
     watch, 
-    formState: { errors: errs }, 
     getValues, 
     setValue,
     reset
   } = useForm<Invoice>()
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
-  const items = watch("items");
   const amounts = watch("items")?.map(item => item.amount) ?? [];
 
   const printRef = useRef<HTMLDivElement>(null)
@@ -110,24 +108,24 @@ function App() {
     setCurrentItemCount(prev => prev - 1)
   };
 
-  const handleUpdateItem = (index: number, field: string, newValue: string | number) => {
-    const currentList = getValues('items');
-    const newList = [...currentList];
-    if (field === "name") {
-      newList[index].name = newValue as string;
-    }
-    else if (field === "quantity") {
-      newList[index].quantity = newValue as number;
-    }
-    else if (field === "unitPrice") {
-      newList[index].unitPrice = newValue as number;
-    }
-    setValue('items', newList);
-  };
+  // const handleUpdateItem = (index: number, field: string, newValue: string | number) => {
+  //   const currentList = getValues('items');
+  //   const newList = [...currentList];
+  //   if (field === "name") {
+  //     newList[index].name = newValue as string;
+  //   }
+  //   else if (field === "quantity") {
+  //     newList[index].quantity = newValue as number;
+  //   }
+  //   else if (field === "unitPrice") {
+  //     newList[index].unitPrice = newValue as number;
+  //   }
+  //   setValue('items', newList);
+  // };
 
   // Watch specific fields for changes
   useEffect(() => {
-    const subscription = watch((value, { name }) => {
+    const subscription = watch((_, { name }) => {
         if (name?.includes('quantity') || name?.includes('unitPrice')) {
             const index = parseInt(name.split('.')[1]); // Get the row index
             const amount = calculateAmount(index);
