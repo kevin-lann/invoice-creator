@@ -28,8 +28,26 @@ export const toPdf = async (element: HTMLElement, fileName: string) => {
       const imgProperties = pdf.getImageProperties(data)
       const pdfWidth = pdf.internal.pageSize.getWidth()
       const pdfHeight = (imgProperties.height * pdfWidth)  / imgProperties.width; // scale image
+      const pageHeight = pdf.internal.pageSize.getHeight();
   
-      pdf.addImage(data, "PNG", 0, 0, pdfWidth, pdfHeight)
-      pdf.save(fileName)
-      console.log("Finished generating pdf")
+      // Handle multi-page
+      let heightLeft = pdfHeight;
+      let position = 0;
+      let page = 1;
+    
+      // First page
+      pdf.addImage(data, "PNG", 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+    
+      // Add subsequent pages if needed
+      while (heightLeft >= 0) {
+        position = -pageHeight * page;
+        pdf.addPage();
+        pdf.addImage(data, "PNG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+        page++;
+      }
+    
+      pdf.save(fileName);
+      console.log("Finished generating pdf");
 }

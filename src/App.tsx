@@ -6,8 +6,8 @@ import { useForm, SubmitHandler, useFieldArray } from 'react-hook-form'
 import { FileDown, Import, Plus, Save, X } from 'lucide-react'
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { toPdf } from './utils/toPdf'
-import { toJson } from './utils/toJson'
+import { toPdf } from './utils/pdfConverter'
+import { fromJson, toJson } from './utils/jsonConverter'
 
 const currencyFormatter = new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -18,13 +18,33 @@ function App() {
 
   const [invoice, setInvoice] = useState<Invoice>(baseInvoice)
   const [currentItemCount, setCurrentItemCount] = useState(0)
-  const {register, handleSubmit, watch, formState: { errors: errs }, getValues, setValue} = useForm<Invoice>()
+  const {
+    register, 
+    handleSubmit, 
+    watch, 
+    formState: { errors: errs }, 
+    getValues, 
+    setValue,
+    reset
+  } = useForm<Invoice>()
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   const items = watch("items");
   const amounts = watch("items")?.map(item => item.amount) ?? [];
 
   const printRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const invoice = await fromJson(file)
+      if (invoice) {
+        reset(invoice); 
+        setCurrentItemCount(invoice.items.length)
+      }
+    }
+  }
 
   const setDefaultsValues= () => {
     if (!getValues('date')) 
@@ -285,14 +305,22 @@ function App() {
               <button
                 className="p-2 text-gray-600"
                 type="button"
+                title='Save'
                 onClick={() => handleExportJson(getValues())}
               >
                 <Save size={20} />
               </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
               <button
                 className="p-2 text-gray-600"
                 type="button"
-                onClick={() => handleExportJson(getValues())}
+                title='Inport'
+                onClick={() => fileInputRef.current?.click()}
               >
                 <Import size={20} />
               </button>
