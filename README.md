@@ -4,5 +4,5 @@ Micro-saas I built for an HVAC business that downloads a react component as a pd
 ## Tools used:
 - React, Vite, react-hook-form, html2canvas, jspdf, TailwindCSS
 
-![screenshot](/images/invoice.png)
+![Thumbnail](/public/images/invoice.png)
 
