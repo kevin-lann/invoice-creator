@@ -1,6 +1,5 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import { Invoice } from "../models/Invoice";
 
 export const toPdf = async (element: HTMLElement, fileName: string) => {
       console.log("Beginning pdf gen")

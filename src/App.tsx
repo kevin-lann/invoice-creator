@@ -2,10 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { Invoice, baseInvoice } from './models/Invoice'
 import { contactInfo } from './constants/contactInfo'
-import { useForm, SubmitHandler, useFieldArray } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { FileDown, Import, Plus, Save, X } from 'lucide-react'
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { toPdf } from './utils/pdfConverter'
 import { fromJson, toJson } from './utils/jsonConverter'
 
