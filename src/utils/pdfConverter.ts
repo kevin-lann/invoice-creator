@@ -12,7 +12,8 @@ export const toPdf = async (element: HTMLElement, fileName: string) => {
           Array.from(clonedDoc.getElementsByTagName('input')).forEach(input => {
             input.style.height = "24px";
             input.style.padding = "0px";
-            input.style.borderRadius = "0px"
+            input.style.borderRadius = "0px";
+            input.style.border = "none";
           });
         }
       })

@@ -253,6 +253,8 @@ function App() {
                             <input 
                               {...register(`items.${index}.quantity`, {valueAsNumber: true })}
                               type="number"
+                              min="0"
+                              step="any"
                               defaultValue={0}
                               className="h-[30px] w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
                             />
@@ -261,6 +263,8 @@ function App() {
                             <input 
                               {...register(`items.${index}.unitPrice`, {valueAsNumber: true })}
                               type="number"
+                              min="0"
+                              step="any"
                               defaultValue={0}
                               className="h-[30px] w-full text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
                             />
