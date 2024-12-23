@@ -142,7 +142,16 @@ function App() {
               
   return (
     <>
-      <div className="w-[100vw] h-[100vh] absolute z-[-10] bg-grid top-0 left-0"></div>
+      <div 
+        className={`w-[100vw] absolute z-[-10] bg-grid top-0 left-0`}
+        style={{ 
+          height: `${Math.max(
+            window.innerHeight,
+            document.documentElement.scrollHeight,
+            (printRef?.current?.offsetHeight ?? 0) + 200
+          )}px` 
+        }}
+      ></div>
       <div className="w-full flex flex-col items-center min-h-screen">
         <form onSubmit={onSubmit}>
           <div ref={printRef} className="bg-white shadow-lg rounded-lg p-8 w-[8.5in] max-w-2xl flex flex-col">
