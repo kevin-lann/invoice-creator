@@ -3,3 +3,20 @@
   margin: 0 auto;
   padding: 2rem;
 }
+
+/* For Webkit browsers (Chrome, Safari) */
+.hide-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* For Firefox */
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+/* For IE/Edge */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+}

@@ -3,7 +3,7 @@ import './App.css'
 import { Invoice, baseInvoice } from './models/Invoice'
 import { contactInfo } from './constants/contactInfo'
 import { useForm } from 'react-hook-form'
-import { FileDown, Import, Plus, Save, X } from 'lucide-react'
+import { FileDown, Import, Plus, Save, Upload, X } from 'lucide-react'
 import { toPdf } from './utils/pdfConverter'
 import { fromJson, toJson } from './utils/jsonConverter'
 
@@ -206,7 +206,7 @@ function App() {
                   <div className="text-sm flex flex-col w-[48%]">
                     <label className="mr-2 font-bold mb-2">Description of issues and service: </label>
                     <textarea 
-                        className="text-slate-800 text-sm outline-none py-1 px-2 hover:bg-slate-100 hover:py-2 placeholder:italic placeholder:text-gray-500 border border-2 border-gray-100 resize-none"
+                        className="hide-scrollbar text-slate-800 text-sm outline-none py-1 px-2 hover:bg-slate-100 hover:py-2 placeholder:italic placeholder:text-gray-500 border border-2 border-gray-100 resize-none"
                         placeholder=""
                         {...register("description")}
                       />
@@ -214,7 +214,7 @@ function App() {
                   <div className="text-sm flex flex-col w-[48%]">
                     <label className="mr-2 font-bold mb-2">Recommendations: </label>
                     <textarea 
-                        className="text-slate-800 text-sm outline-none py-1 px-2 hover:bg-slate-100 hover:py-2 placeholder:italic placeholder:text-gray-500 border border-2 border-gray-100 resize-none"
+                        className="hide-scrollbar text-slate-800 text-sm outline-none py-1 px-2 hover:bg-slate-100 hover:py-2 placeholder:italic placeholder:text-gray-500 border border-2 border-gray-100 resize-none"
                         placeholder=""
                         {...register("recommendation")}
                       />
@@ -317,10 +317,10 @@ function App() {
               <button
                 className="p-2 text-gray-600"
                 type="button"
-                title='Inport'
+                title='Import'
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Import size={20} />
+                <Upload size={20} />
               </button>
             </div>
             
