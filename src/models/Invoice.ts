@@ -1,3 +1,11 @@
+export const getCurrentDate = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+};
+
 export type Invoice = {
   invoiceNo: string,
   date: string,
@@ -16,11 +24,15 @@ export type Invoice = {
     quantity?: number,
     unitPrice?: number,
     amount: number,
-  }[]
+  }[],
+  other1: string,
+  other1Fee: number,
+  other2: string,
+  other2Fee: number,
 }
 
 export const baseInvoice: Invoice = {
-  invoiceNo: Date.now().toString(),
+  invoiceNo: getCurrentDate(),
   date: new Date().toDateString().slice(4),
   customerInfo: {
     name: "John Doe",
@@ -58,5 +70,9 @@ export const baseInvoice: Invoice = {
       name: "Labor",
       amount: 200.00,
     }
-  ]
+  ],
+  other1: "",
+  other1Fee: 0,
+  other2: "",
+  other2Fee: 0,
 }

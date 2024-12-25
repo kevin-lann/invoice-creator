@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { Invoice, baseInvoice } from './models/Invoice'
+import { Invoice, baseInvoice, getCurrentDate } from './models/Invoice'
 import { contactInfo } from './constants/contactInfo'
 import { useForm } from 'react-hook-form'
 import { FileDown, Plus, Save, Upload, X } from 'lucide-react'
@@ -27,6 +27,8 @@ function App() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   const amounts = watch("items")?.map(item => item.amount) ?? [];
+  const other1Fee = watch("other1Fee") ?? 0;
+  const other2Fee = watch("other2Fee") ?? 0;
 
   const printRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -46,7 +48,7 @@ function App() {
     if (!getValues('date')) 
       setValue('date', new Date().toDateString().slice(4))
     if (!getValues('invoiceNo'))
-      setValue('invoiceNo', Date.now().toString())
+      setValue('invoiceNo', getCurrentDate())
   }
   setDefaultsValues() 
 
@@ -92,9 +94,11 @@ function App() {
     return quantity * unitPrice;
   };
 
-  const calculatedTotal = useMemo(() => {
+  const calculatedSubtotal = useMemo(() => {
     return amounts?.reduce((sum, amount) => sum + amount, 0) ?? 0
   }, [amounts])
+
+  const calculatedTotal = calculatedSubtotal + (getValues('other1Fee') || 0) + (getValues('other2Fee') || 0)
 
   const handleAddItem = () => {
     const currentList = getValues('items') || [];
@@ -285,10 +289,40 @@ function App() {
                       ))}
                     </tbody>
                   </table>
-                  <div className="w-full flex justify-end pr-2">
-
-                    <label className="text-sm font-bold">Total: {currencyFormatter.format(calculatedTotal)}</label>
-                  </div>
+                    <div className="w-full flex flex-col align-right">
+                      <div className="text-sm text-right pb-1 label-padded">Subtotal: {currencyFormatter.format(calculatedSubtotal).slice(1)}</div>
+                      <div className="flex justify-end">
+                        <input 
+                          type="text"
+                          className={`text-right h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white`}
+                          placeholder=""
+                          {...register("other1")}
+                        />
+                        <input 
+                          {...register(`other1Fee`, {valueAsNumber: true })}
+                          type="number"
+                          min="0"
+                          step="any"
+                          className="w-[60px] h-[30px] text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100  placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <input 
+                          type="text"
+                          className={`text-right h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 placeholder:italic placeholder:text-gray-500 autofill:bg-white`}
+                          placeholder=""
+                          {...register("other2")}
+                        />
+                        <input 
+                          {...register(`other2Fee`, {valueAsNumber: true })}
+                          type="number"
+                          min="0"
+                          step="any"
+                          className="w-[60px] h-[30px] text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100  placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                        />
+                      </div>
+                      <div className="text-sm font-bold text-right pt-1 label-padded">Total: {currencyFormatter.format(calculatedTotal)}</div>
+                    </div>
                 </div>
 
               </div>

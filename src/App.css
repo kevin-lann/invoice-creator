@@ -20,3 +20,7 @@
 .hide-scrollbar {
   -ms-overflow-style: none;
 }
+
+.label-padded {
+  padding-right: 14px;
+}

@@ -15,6 +15,9 @@ export const toPdf = async (element: HTMLElement, fileName: string) => {
             input.style.borderRadius = "0px";
             input.style.border = "none";
           });
+          Array.from(clonedDoc.getElementsByClassName("label-padded")).forEach((el) => {
+            (el as HTMLDivElement).style.paddingRight = "0px";
+          })
         }
       })
       const data = canvas.toDataURL("image/png")
