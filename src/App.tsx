@@ -61,7 +61,7 @@ function App() {
     if (!element)
       return;
     
-    await toPdf(element, `invoice-${invoice.customerInfo?.name}-${invoice?.date?.replace(/\s/g, '-')}`)
+    await toPdf(element, `invoice-${invoice.customerInfo?.address}-${invoice?.date?.replace(/\s/g, '-')}`)
   }
 
   // Method 3: Use both success and error callbacks
@@ -89,16 +89,16 @@ function App() {
   // Calculate amount for each row
   const calculateAmount = (index: number) => {
     const values = getValues(`items.${index}`);
-    const quantity = values?.quantity ?? 0;
-    const unitPrice = values?.unitPrice ?? 0;
+    const quantity = values?.quantity || 0;
+    const unitPrice = values?.unitPrice || 0;
     return quantity * unitPrice;
   };
 
   const calculatedSubtotal = useMemo(() => {
-    return amounts?.reduce((sum, amount) => sum + amount, 0) ?? 0
+    return amounts?.reduce((sum, amount) => sum + amount, 0) || 0
   }, [amounts])
 
-  const calculatedTotal = useMemo(() => calculatedSubtotal + other1Fee + other2Fee, [other1Fee, other2Fee])
+  const calculatedTotal = useMemo(() => calculatedSubtotal + other1Fee + other2Fee, [other1Fee, other2Fee, calculatedSubtotal])
 
   const handleAddItem = () => {
     const currentList = getValues('items') || [];
@@ -290,7 +290,19 @@ function App() {
                     </tbody>
                   </table>
                     <div className="w-full flex flex-col align-right">
-                      <div className="text-sm text-right pb-1 label-padded">Subtotal: {currencyFormatter.format(calculatedSubtotal).slice(1)}</div>
+                      <div className="text-sm text-right pb-1 label-padded">Subtotal: &nbsp;&nbsp; {currencyFormatter.format(calculatedSubtotal).slice(1)}</div>
+                      <div className="flex flex-row justify-end align-center">
+                        <div className="pt-1 text-sm text-right">Labour and Diagnosis Fee:</div>
+                        <div>
+                          <input 
+                            {...register(`labourFee`, {valueAsNumber: true })}
+                            type="number"
+                            min="0"
+                            step="any"
+                            className="w-[60px] h-[30px] text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100  placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                          />
+                        </div>
+                      </div>
                       <div className="flex justify-end">
                         <input 
                           type="text"

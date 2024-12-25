@@ -25,6 +25,7 @@ export type Invoice = {
     unitPrice?: number,
     amount: number,
   }[],
+  labourFee: number,
   other1: string,
   other1Fee: number,
   other2: string,
@@ -71,6 +72,7 @@ export const baseInvoice: Invoice = {
       amount: 200.00,
     }
   ],
+  labourFee: 0,
   other1: "",
   other1Fee: 0,
   other2: "",
