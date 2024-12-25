@@ -27,6 +27,8 @@ function App() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   const amounts = watch("items")?.map(item => item.amount) ?? [];
+  const other1Fee = watch("other1Fee") || 0;
+  const other2Fee = watch("other2Fee") || 0;
 
   const printRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -96,7 +98,7 @@ function App() {
     return amounts?.reduce((sum, amount) => sum + amount, 0) ?? 0
   }, [amounts])
 
-  const calculatedTotal = calculatedSubtotal + (getValues('other1Fee') || 0) + (getValues('other2Fee') || 0)
+  const calculatedTotal = useMemo(() => calculatedSubtotal + other1Fee + other2Fee, [other1Fee, other2Fee])
 
   const handleAddItem = () => {
     const currentList = getValues('items') || [];
