@@ -27,8 +27,6 @@ function App() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   const amounts = watch("items")?.map(item => item.amount) ?? [];
-  const other1Fee = watch("other1Fee") ?? 0;
-  const other2Fee = watch("other2Fee") ?? 0;
 
   const printRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
