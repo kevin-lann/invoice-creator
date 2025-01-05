@@ -27,6 +27,7 @@ function App() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
 
   const amounts = watch("items")?.map(item => item.amount) ?? [];
+  const labourFee = watch("labourFee") || 0
   const other1Fee = watch("other1Fee") || 0;
   const other2Fee = watch("other2Fee") || 0;
 
@@ -98,7 +99,7 @@ function App() {
     return amounts?.reduce((sum, amount) => sum + amount, 0) || 0
   }, [amounts])
 
-  const calculatedTotal = useMemo(() => calculatedSubtotal + other1Fee + other2Fee, [other1Fee, other2Fee, calculatedSubtotal])
+  const calculatedTotal = useMemo(() => calculatedSubtotal + labourFee + other1Fee + other2Fee, [labourFee, other1Fee, other2Fee, calculatedSubtotal])
 
   const handleAddItem = () => {
     const currentList = getValues('items') || [];
