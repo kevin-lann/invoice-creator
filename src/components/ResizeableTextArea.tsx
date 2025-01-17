@@ -1,6 +1,5 @@
-import { useFormContext, UseFormRegister } from "react-hook-form"
-import { Invoice } from "../models/Invoice";
-import { ChangeEvent, useEffect, useRef } from "react";
+import { UseFormRegister } from "react-hook-form"
+import { ChangeEvent } from "react";
 
 interface ResizeableTextAreaProps {
   register: UseFormRegister<any>;
