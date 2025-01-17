@@ -7,6 +7,8 @@ export const toPdf = async (element: HTMLElement, fileName: string) => {
         scale: 1.75,
         useCORS: true,
         height: element.offsetHeight,
+        width: element.offsetWidth,
+        logging: true, 
         onclone: function(clonedDoc) {
           // Find all inputs in cloned document and adjust their height
           Array.from(clonedDoc.getElementsByTagName('input')).forEach(input => {
@@ -18,7 +20,26 @@ export const toPdf = async (element: HTMLElement, fileName: string) => {
           Array.from(clonedDoc.getElementsByClassName("label-padded")).forEach((el) => {
             (el as HTMLDivElement).style.paddingRight = "0px";
           })
-        }
+          // Handle textareas with proper text wrapping
+          Array.from(clonedDoc.getElementsByTagName("textarea")).forEach(ta => {
+            // Preserve line breaks and wrapping
+            ta.style.whiteSpace = "pre-wrap";
+            ta.style.wordBreak = "break-word";
+            ta.style.overflowWrap = "break-word";
+            ta.style.lineHeight = "1.5";
+            ta.style.minHeight = "32px";
+            // Force the textarea to show its full content
+            ta.style.height = "auto";
+            ta.style.height = `${ta.scrollHeight}px`;
+            // Remove borders and styling that might interfere
+            ta.style.border = "none";
+            ta.style.outline = "none";
+            ta.style.resize = "none";
+            ta.style.overflow = "hidden";
+          });
+        },
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
       })
       const data = canvas.toDataURL("image/png")
   

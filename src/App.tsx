@@ -2,10 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { Invoice, baseInvoice, getCurrentDate } from './models/Invoice'
 import { contactInfo } from './constants/contactInfo'
-import { useForm } from 'react-hook-form'
+import { useForm, FormProvider } from 'react-hook-form'
 import { FileDown, Plus, Save, Upload, X } from 'lucide-react'
 import { toPdf } from './utils/pdfConverter'
 import { fromJson, toJson } from './utils/jsonConverter'
+import ResizeableTextArea from './components/ResizeableTextArea'
 
 const currencyFormatter = new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -215,24 +216,23 @@ function App() {
                   </div>
                 </div>
                 
-                <div className="flex flex-row justify-between mb-4">
-                  <div className="text-sm flex flex-col w-[48%]">
-                    <label className="mr-2 font-bold mb-2">Description of issues and service: </label>
-                    <textarea 
-                        className="hide-scrollbar text-slate-800 text-sm outline-none py-1 px-2 hover:bg-slate-100 hover:py-2 placeholder:italic placeholder:text-gray-500 border border-2 border-gray-100 resize-none"
-                        placeholder=""
-                        {...register("description")}
-                      />
+                
+                  <div className="flex flex-col justify-between mb-4">
+                    <div className="text-sm flex flex-col w-full">
+                      <label className="mr-2 font-bold mb-2">Description of issues and service: </label>
+                        <ResizeableTextArea
+                          register={register}
+                          registerValue='description'
+                        />
+                    </div>
+                    <div className="text-sm flex flex-col w-full">
+                      <label className="mr-2 font-bold mb-2">Recommendations: </label>
+                        <ResizeableTextArea
+                          register={register}
+                          registerValue='recommendation'
+                        />
+                    </div>
                   </div>
-                  <div className="text-sm flex flex-col w-[48%]">
-                    <label className="mr-2 font-bold mb-2">Recommendations: </label>
-                    <textarea 
-                        className="hide-scrollbar text-slate-800 text-sm outline-none py-1 px-2 hover:bg-slate-100 hover:py-2 placeholder:italic placeholder:text-gray-500 border border-2 border-gray-100 resize-none"
-                        placeholder=""
-                        {...register("recommendation")}
-                      />
-                  </div>
-                </div>
 
                 <label className="mr-2 text-sm font-bold text-lg mb-2">Materials and Parts: </label>
                 <div className="w-full"> 
