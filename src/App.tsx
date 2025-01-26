@@ -185,19 +185,19 @@ function App() {
                     <input 
                       type="text"
                       className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white`}
-                      placeholder=""
+                      placeholder="Customer Name"
                       {...register("customerInfo.name")}
                     />
                     <input 
                       type="text"
                       className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white ${errors.address !== undefined ? "border border-2 border-red-500" : ""}`}
-                      placeholder=""
+                      placeholder="Customer Address"
                       {...register("customerInfo.address", {required: true})}
                     />
                     <input 
                       type="text"
                       className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white ${errors.city !== undefined ? "border border-2 border-red-500" : ""}`}
-                      placeholder=""
+                      placeholder="City"
                       {...register("customerInfo.city", {required: true})}
                     />
                   </div>
@@ -205,13 +205,13 @@ function App() {
                     <input 
                       type="tel"
                       className="h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
-                      placeholder=""
+                      placeholder="Customer phone"
                       {...register("customerInfo.phone")}
                     />
                     <input 
                       type="email"
                       className="h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
-                      placeholder=""
+                      placeholder="Customer email"
                       {...register("customerInfo.email")}
                     />
                   </div>
