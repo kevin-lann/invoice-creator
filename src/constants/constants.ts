@@ -1,0 +1,1 @@
+export const COMPANY_NAME = "Barney's Heating Cooling & Appliance"

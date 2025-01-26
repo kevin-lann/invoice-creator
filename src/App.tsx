@@ -7,6 +7,7 @@ import { FileDown, Plus, Save, Upload, X } from 'lucide-react'
 import { toPdf } from './utils/pdfConverter'
 import { fromJson, toJson } from './utils/jsonConverter'
 import ResizeableTextArea from './components/ResizeableTextArea'
+import { COMPANY_NAME } from './constants/constants'
 
 const currencyFormatter = new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -170,8 +171,8 @@ function App() {
                     <p className="text-sm">Invoice number: {invoice.invoiceNo}</p>
                     <p className="text-sm">{invoice.date}</p>
                   </div>
-                  <div className="text-align-right flex flex-col gap-1">
-                    <h2 className="font-bold">Barney's Home Repair</h2>
+                  <div className="text-align-right flex items-end flex-col gap-1">
+                    <h2 className="font-bold">{COMPANY_NAME}</h2>
                     <p className="text-sm">Phone: {contactInfo.phone}</p>
                     <p className="text-sm">Email: {contactInfo.email}</p>
                     <p className="text-sm">Wechat ID: {contactInfo.weChatId}</p>
@@ -184,19 +185,19 @@ function App() {
                     <input 
                       type="text"
                       className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white`}
-                      placeholder="Enter customer name"
+                      placeholder=""
                       {...register("customerInfo.name")}
                     />
                     <input 
                       type="text"
                       className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white ${errors.address !== undefined ? "border border-2 border-red-500" : ""}`}
-                      placeholder="Enter customer address"
+                      placeholder=""
                       {...register("customerInfo.address", {required: true})}
                     />
                     <input 
                       type="text"
                       className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white ${errors.city !== undefined ? "border border-2 border-red-500" : ""}`}
-                      placeholder="Enter city"
+                      placeholder=""
                       {...register("customerInfo.city", {required: true})}
                     />
                   </div>
@@ -204,13 +205,13 @@ function App() {
                     <input 
                       type="tel"
                       className="h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
-                      placeholder="Enter customer phone number"
+                      placeholder=""
                       {...register("customerInfo.phone")}
                     />
                     <input 
                       type="email"
                       className="h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
-                      placeholder="Enter customer email"
+                      placeholder=""
                       {...register("customerInfo.email")}
                     />
                   </div>
