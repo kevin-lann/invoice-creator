@@ -16,6 +16,7 @@ export const toPdf = async (element: HTMLElement, fileName: string) => {
             input.style.padding = "0px";
             input.style.borderRadius = "0px";
             input.style.border = "none";
+            input.style.background = "none";
           });
           Array.from(clonedDoc.getElementsByClassName("label-padded")).forEach((el) => {
             (el as HTMLDivElement).style.paddingRight = "0px";

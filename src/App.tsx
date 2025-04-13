@@ -8,6 +8,7 @@ import { toPdf } from './utils/pdfConverter'
 import { fromJson, toJson } from './utils/jsonConverter'
 import ResizeableTextArea from './components/ResizeableTextArea'
 import { COMPANY_NAME } from './constants/constants'
+import { formatDateAsYYYYMMDD } from './utils/formatDate'
 
 const currencyFormatter = new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -32,6 +33,8 @@ function App() {
   const labourFee = watch("labourFee") || 0
   const other1Fee = watch("other1Fee") || 0;
   const other2Fee = watch("other2Fee") || 0;
+  const date = watch("date") || new Date();
+  const invoiceNo = watch("invoiceNo") || "";
 
   const printRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -141,6 +144,10 @@ function App() {
                 shouldTouch: true,
             });
         }
+        if (name === "date") {
+          const date = getValues("date")
+          setValue("invoiceNo", date.replace(/-/g, ""))
+        }
     });
     
     return () => subscription.unsubscribe();
@@ -168,8 +175,14 @@ function App() {
                 <div className="flex flex-row justify-between">
                   <div className="text-align-left">
                     <h1 className="text-2xl font-bold">INVOICE</h1>
-                    <p className="text-sm">Invoice number: {invoice.invoiceNo}</p>
-                    <p className="text-sm">{invoice.date}</p>
+                    <p className="text-sm">Invoice number: {getValues("invoiceNo")}
+                    </p>
+                    <input 
+                      type="date"
+                      className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white`}
+                      placeholder="Date"
+                      {...register("date")}
+                    />
                   </div>
                   <div className="text-align-right flex items-end flex-col gap-1">
                     <h2 className="font-bold">{COMPANY_NAME}</h2>
