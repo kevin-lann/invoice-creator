@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import { Invoice, baseInvoice, getCurrentDate } from './models/Invoice'
+import { Invoice, getCurrentDate } from './models/Invoice'
 import { contactInfo } from './constants/contactInfo'
 import { useForm } from 'react-hook-form'
 import { FileDown, Plus, Save, Upload, X } from 'lucide-react'
@@ -8,7 +8,6 @@ import { toPdf } from './utils/pdfConverter'
 import { fromJson, toJson } from './utils/jsonConverter'
 import ResizeableTextArea from './components/ResizeableTextArea'
 import { COMPANY_NAME } from './constants/constants'
-import { formatDateAsYYYYMMDD } from './utils/formatDate'
 
 const currencyFormatter = new Intl.NumberFormat('en-CA', {
   style: 'currency',
@@ -17,7 +16,7 @@ const currencyFormatter = new Intl.NumberFormat('en-CA', {
 
 function App() {
 
-  const [invoice] = useState<Invoice>(baseInvoice)
+  // const [invoice] = useState<Invoice>(baseInvoice)
   const [currentItemCount, setCurrentItemCount] = useState(0)
   const {
     register, 
@@ -33,8 +32,6 @@ function App() {
   const labourFee = watch("labourFee") || 0
   const other1Fee = watch("other1Fee") || 0;
   const other2Fee = watch("other2Fee") || 0;
-  const date = watch("date") || new Date();
-  const invoiceNo = watch("invoiceNo") || "";
 
   const printRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
