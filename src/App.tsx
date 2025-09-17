@@ -194,7 +194,7 @@ function App() {
 
                 <h2 className="font-bold text-lg mb-2 pt-4">Bill To:</h2>
                 <div className = "flex flex-row justify-between pb-4">
-                  <div className="flex flex-col">
+                  <div className="flex flex-col w-[60%]">
                     <input 
                       type="text"
                       className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white`}

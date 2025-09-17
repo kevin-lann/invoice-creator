@@ -1,1 +1,1 @@
-export const COMPANY_NAME = "Barney's Heating Cooling & Appliance"
+export const COMPANY_NAME = "Barney's Electrical & Home Appliance"
