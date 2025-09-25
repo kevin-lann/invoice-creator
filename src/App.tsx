@@ -187,7 +187,7 @@ function App() {
                   <div className="text-align-right flex items-end flex-col gap-1">
                     <h2 className="font-bold">{COMPANY_NAME}</h2>
                     <p className="text-sm">Phone: {contactInfo.phone}</p>
-                    <p className="text-sm">Email: {contactInfo.email}</p>
+                    {/* <p className="text-sm">Email: {contactInfo.email}</p> */}
                     <p className="text-sm">Wechat ID: {contactInfo.weChatId}</p>
                   </div>
                 </div>
