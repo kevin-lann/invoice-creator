@@ -175,8 +175,17 @@ function App() {
                 <div className="flex flex-row justify-between">
                   <div className="text-align-left">
                     <h1 className="text-2xl font-bold">INVOICE</h1>
-                    <p className="text-sm">Invoice number: {getValues("invoiceNo")}
-                    </p>
+                    <div className="flex flex-row gap-3 items-center">
+                      <p className="text-sm">Invoice number:
+                      </p>
+                      <input 
+                        type="text"
+                        id='invoiceNo'
+                        className={`p-0 h-[30px] w-[90px] text-slate-800 text-sm outline-none rounded-md hover:bg-slate-100 placeholder:italic placeholder:text-gray-500 autofill:bg-white`}
+                        placeholder="Date"
+                        {...register("invoiceNo")}
+                      />
+                    </div>
                     <input 
                       type="date"
                       className={`h-[30px] text-slate-800 text-sm outline-none py-1 pr-2 rounded-md hover:bg-slate-100 hover:pl-2 hover:py-2 placeholder:italic placeholder:text-gray-500 autofill:bg-white`}

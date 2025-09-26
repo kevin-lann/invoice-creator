@@ -12,6 +12,9 @@ export const toPdf = async (element: HTMLElement, fileName: string) => {
         onclone: function(clonedDoc) {
           // Find all inputs in cloned document and adjust their height
           Array.from(clonedDoc.getElementsByTagName('input')).forEach(input => {
+            if (input.id === 'invoiceNo') {
+              input.style.marginTop = '10px';
+            }
             input.style.height = "32px";
             input.style.padding = "0px";
             input.style.borderRadius = "0px";
