@@ -3,6 +3,7 @@ import {
   CHARGES,
   CHARGE_CATEGORIES,
   chargeAmounts,
+  chargeTaxFlags,
   type ChargeAmounts,
   type ChargeCategory,
 } from './charges'
@@ -20,14 +21,8 @@ export type AmountType = typeof AMOUNT_TYPES[number]
 
 export type AmountBreakdown = Record<AmountType, number>
 
-/** The rate charged on the parts and on every fee the registry marks taxable. */
+/** The rate charged on whichever lines of an invoice are marked for HST. */
 export const HST_RATE = 0.13
-
-/** The slices HST is charged on: the parts, plus the taxable fees. */
-const TAXED: ReadonlySet<AmountType> = new Set<AmountType>([
-  'parts',
-  ...CHARGES.filter(charge => charge.taxable).map(charge => charge.category),
-])
 
 /**
  * Where a line item named like labour is counted. Spelled out rather than
@@ -71,25 +66,38 @@ const num = (value: number | undefined) =>
  */
 export function breakdownOf(
   invoice: {
-    items?: Pick<Invoice['items'][number], 'name' | 'amount'>[]
-  } & Partial<ChargeAmounts>,
+    items?: (Pick<Invoice['items'][number], 'name' | 'amount'> &
+      Partial<Pick<Invoice['items'][number], 'taxable'>>)[]
+  } & Partial<ChargeAmounts> & { taxedCharges?: unknown },
 ): AmountBreakdown {
   const breakdown = emptyBreakdown()
 
+  // What HST is charged on is the invoice's own answer, line by line, rather
+  // than a rule about kinds of money: nothing is taxed unless it is ticked.
+  let taxable = 0
+
   for (const item of invoice.items ?? []) {
+    const amount = num(item.amount)
     if (isLabourItem(item.name))
-      breakdown[LABOUR_CATEGORY] += num(item.amount)
+      breakdown[LABOUR_CATEGORY] += amount
     else
-      breakdown.parts += num(item.amount)
+      breakdown.parts += amount
+    // The tick follows the line it was put on, not the slice the reports file
+    // that line under: an item named like labour is counted as labour above,
+    // and is still one of the items the subtotal's tick covers.
+    if (item.taxable === true)
+      taxable += amount
   }
 
   const charges = chargeAmounts(invoice)
-  for (const charge of CHARGES)
+  const taxed = chargeTaxFlags(invoice)
+  for (const charge of CHARGES) {
     breakdown[charge.category] += charges[charge.key]
+    if (taxed[charge.key])
+      taxable += charges[charge.key]
+  }
 
-  breakdown.tax = AMOUNT_TYPES
-    .filter(type => TAXED.has(type))
-    .reduce((sum, type) => sum + breakdown[type], 0) * HST_RATE
+  breakdown.tax = taxable * HST_RATE
 
   return breakdown
 }

@@ -1,4 +1,11 @@
-import { emptyCharges, type ChargeAmounts } from './charges'
+import {
+  emptyChargeNames,
+  emptyCharges,
+  emptyTaxFlags,
+  type ChargeAmounts,
+  type ChargeNames,
+  type ChargeTaxes,
+} from './charges'
 
 export const getCurrentDate = () => {
   const date = new Date();
@@ -45,8 +52,19 @@ export type Invoice = {
     quantity?: number,
     unitPrice?: number,
     amount: number,
+    /** Whether HST is charged on this line. Off unless it is switched on. */
+    taxable: boolean,
   }[],
-} & ChargeAmounts
+} & ChargeAmounts & ChargeNames & ChargeTaxes
+
+/**
+ * Whether a line item out of the database or a JSON file is taxed. One written
+ * before the per-item toggles existed carries no flag of its own, and back
+ * then HST was charged on the whole subtotal -- so it reads as taxed, and an
+ * old invoice re-opened still totals what it was sent out for.
+ */
+export const storedItemTaxable = (taxable: unknown): boolean =>
+  typeof taxable === 'boolean' ? taxable : true
 
 export const baseInvoice: Invoice = {
   status: DEFAULT_INVOICE_STATUS,
@@ -68,6 +86,7 @@ export const baseInvoice: Invoice = {
       quantity: 1,
       unitPrice: 5.00,
       amount: 5.00,
+      taxable: false,
     },
     {
       id: 1,
@@ -75,6 +94,7 @@ export const baseInvoice: Invoice = {
       quantity: 2,
       unitPrice: 8.00,
       amount: 16.00,
+      taxable: false,
     },
     {
       id: 2,
@@ -82,12 +102,17 @@ export const baseInvoice: Invoice = {
       quantity: 30,
       unitPrice: 0.60,
       amount: 18.00,
+      taxable: false,
     },
     {
       id: 3,
       name: "Labor",
       amount: 200.00,
+      taxable: false,
     }
   ],
   ...emptyCharges(),
+  ...emptyChargeNames(),
+  // A new invoice charges HST on nothing until it is told to.
+  taxedCharges: emptyTaxFlags(),
 }

@@ -9,7 +9,7 @@ interface AmountTypeStyle {
 }
 
 /**
- * Categorical slots 1-4 of the chart palette, in fixed order: colour follows
+ * Categorical slots 1-5 of the chart palette, in fixed order: colour follows
  * the amount type, never its size, so a filter can never repaint a series.
  * Validated as a set against the white card surface -- aqua and yellow both
  * land under 3:1, which is why every series always carries a visible value
@@ -30,6 +30,12 @@ export const amountTypeStyles: Record<AmountType, AmountTypeStyle> = {
     label: 'Parking',
     color: '#1baf7a',
     badge: 'bg-emerald-50 text-emerald-900 border-emerald-200',
+  },
+  other: {
+    // Whatever the invoice called it; the reports only know it as "other".
+    label: 'Other',
+    color: '#8256d0',
+    badge: 'bg-violet-50 text-violet-900 border-violet-200',
   },
   tax: {
     label: 'HST',
