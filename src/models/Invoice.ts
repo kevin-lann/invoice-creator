@@ -1,3 +1,5 @@
+import { emptyCharges, type ChargeAmounts } from './charges'
+
 export const getCurrentDate = () => {
   const date = new Date();
   const year = date.getFullYear();
@@ -6,7 +8,26 @@ export const getCurrentDate = () => {
   return `${year}${month}${day}`;
 };
 
+export const INVOICE_STATUSES = ['paid', 'unpaid'] as const
+
+/** Where an invoice stands with the customer. */
+export type InvoiceStatus = typeof INVOICE_STATUSES[number]
+
+/** A freshly written invoice has not been paid yet. */
+export const DEFAULT_INVOICE_STATUS: InvoiceStatus = 'unpaid'
+
+export const isInvoiceStatus = (value: unknown): value is InvoiceStatus =>
+  INVOICE_STATUSES.includes(value as InvoiceStatus)
+
 export type Invoice = {
+  /**
+   * Stable, globally unique identity for this invoice, assigned on first save.
+   * Optional because invoices typed into the editor (and files exported before
+   * ids existed) do not have one until they are saved.
+   */
+  uuid?: string,
+  /** Payment status; absent on invoices saved before statuses existed. */
+  status?: InvoiceStatus,
   invoiceNo: string,
   date: string,
   customerInfo: {
@@ -25,14 +46,10 @@ export type Invoice = {
     unitPrice?: number,
     amount: number,
   }[],
-  labourFee: number,
-  other1: string,
-  other1Fee: number,
-  other2: string,
-  other2Fee: number,
-}
+} & ChargeAmounts
 
 export const baseInvoice: Invoice = {
+  status: DEFAULT_INVOICE_STATUS,
   invoiceNo: getCurrentDate(),
   date: new Date().toDateString().slice(4),
   customerInfo: {
@@ -72,9 +89,5 @@ export const baseInvoice: Invoice = {
       amount: 200.00,
     }
   ],
-  labourFee: 0,
-  other1: "",
-  other1Fee: 0,
-  other2: "",
-  other2Fee: 0,
+  ...emptyCharges(),
 }

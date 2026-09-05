@@ -21,6 +21,9 @@ export const toPdf = async (element: HTMLElement, fileName: string) => {
             input.style.border = "none";
             input.style.background = "none";
           });
+          // Screen-only notes to whoever is writing the invoice -- warnings and
+          // the like -- are no part of what the customer is handed.
+          Array.from(clonedDoc.getElementsByClassName("no-export")).forEach(el => el.remove());
           Array.from(clonedDoc.getElementsByClassName("label-padded")).forEach((el) => {
             (el as HTMLDivElement).style.paddingRight = "0px";
           })
@@ -76,6 +79,7 @@ export const toPdf = async (element: HTMLElement, fileName: string) => {
         page++;
       }
     
-      pdf.save(fileName);
+      // jsPDF writes the name through as given, so the extension is ours to add.
+      pdf.save(fileName.endsWith(".pdf") ? fileName : `${fileName}.pdf`);
       console.log("Finished generating pdf");
 }

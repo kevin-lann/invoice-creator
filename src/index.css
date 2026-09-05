@@ -11,6 +11,17 @@
   color: black;
   background-color: #f4f4f4;
 
+  /*
+   * The graph paper behind every page. It lives on the root element because a
+   * background there is painted across the whole canvas, however far the
+   * document turns out to scroll -- so it reaches the bottom of a long invoice
+   * without anything having to measure how tall the page grew.
+   */
+  background-image:
+    linear-gradient(to right, rgba(194, 199, 206, 0.3) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(194, 199, 206, 0.3) 1px, transparent 1px);
+  background-size: 40px 40px;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -52,13 +63,4 @@ input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0px 1000px white inset;
   -webkit-text-fill-color: inherit;
   transition: background-color 5000s ease-in-out 0s;
-}
-
-@layer utilities {
-  .bg-grid {
-    background-image: 
-      linear-gradient(to right, rgba(194, 199, 206, 0.3) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(194, 199, 206, 0.3) 1px, transparent 1px);
-    background-size: 40px 40px;
-  }
 }

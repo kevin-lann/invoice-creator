@@ -24,3 +24,24 @@
 .label-padded {
   padding-right: 14px;
 }
+
+/*
+ * The fee boxes in the totals block. Their spinners are hidden so the figure
+ * inside them lines up with the Subtotal, HST and Total lines above and below:
+ * a number input reserves the spinner's width whether or not the arrows are
+ * showing, which held the fees a couple of pixels clear of the lines they have
+ * to sit under. With the spinner gone the box carries the same 14px right
+ * padding as those lines, so every figure ends on one edge. It also keeps the
+ * arrows out of the exported PDF.
+ */
+.charge-input {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.charge-input::-webkit-outer-spin-button,
+.charge-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
