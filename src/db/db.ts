@@ -1,6 +1,17 @@
 import Dexie, { type EntityTable } from 'dexie';
-import { DEFAULT_INVOICE_STATUS, isInvoiceStatus, type InvoiceStatus } from '../models/Invoice';
-import type { ChargeAmounts } from '../models/charges';
+import {
+  DEFAULT_INVOICE_STATUS,
+  isInvoiceStatus,
+  storedItemTaxable,
+  type InvoiceStatus,
+} from '../models/Invoice';
+import {
+  chargeNames,
+  storedChargeTaxFlags,
+  type ChargeAmounts,
+  type ChargeNames,
+  type ChargeTaxes,
+} from '../models/charges';
 
 /**
  * Customer info, stored once per customer and referenced by invoices.
@@ -16,7 +27,8 @@ export interface CustomerRecord {
 
 /**
  * The invoice header. Line items live in the `items` table and the billing
- * details live in `customers`, both linked back by foreign key; the fee columns
+ * details live in `customers`, both linked back by foreign key; the fee
+ * columns, the names typed for the self-named fees and the HST toggles all
  * come from the charge registry, so a fee added there is a column here too.
  */
 export type InvoiceRecord = {
@@ -36,7 +48,7 @@ export type InvoiceRecord = {
   recommendation: string;
   createdAt: number;
   updatedAt: number;
-} & ChargeAmounts;
+} & ChargeAmounts & ChargeNames & ChargeTaxes;
 
 /**
  * The two free-text "other" fees invoices carried before v4. Declared only so
@@ -62,6 +74,8 @@ export interface ItemRecord {
   quantity?: number;
   unitPrice?: number;
   amount: number;
+  /** Whether HST is charged on this line. */
+  taxable: boolean;
 }
 
 const feeAmount = (value: number | undefined) =>
@@ -138,5 +152,26 @@ db.version(5).stores({
   if (!isInvoiceStatus(invoice.status))
     invoice.status = DEFAULT_INVOICE_STATUS;
 }));
+
+// v6 hands every invoice its own HST toggles, one per fee and one per line
+// item, and adds the fee whose name the invoice types for itself. Invoices
+// written before the toggles are marked the way they were actually billed --
+// HST on the whole subtotal and on the labour fee -- rather than picking up
+// the new default of nothing taxed, which would knock 13% off totals that have
+// already gone out to customers.
+db.version(6).stores({
+  customers: '++id, name, city, phone, email',
+  invoices: '++id, &uuid, status, invoiceNo, date, customerId, updatedAt',
+  items: '++id, invoiceId, name',
+}).upgrade(async tx => {
+  await tx.table<InvoiceRecord>('invoices').toCollection().modify(invoice => {
+    invoice.otherFee = feeAmount(invoice.otherFee);
+    invoice.taxedCharges = storedChargeTaxFlags(invoice);
+    Object.assign(invoice, chargeNames(invoice));
+  });
+  await tx.table<ItemRecord>('items').toCollection().modify(item => {
+    item.taxable = storedItemTaxable(item.taxable);
+  });
+});
 
 export { db };

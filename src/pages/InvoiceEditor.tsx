@@ -8,7 +8,13 @@ import {
   getCurrentDate,
 } from '../models/Invoice'
 import { breakdownOf, breakdownTotal } from '../models/AmountType'
-import { CHARGES, chargeAmounts, type ChargeKey } from '../models/charges'
+import {
+  CHARGES,
+  chargeAmounts,
+  chargeNames,
+  chargeTaxFlags,
+  type ChargeKey,
+} from '../models/charges'
 import { invoiceStatusStyles } from '../constants/invoiceStatus'
 import { contactInfo } from '../constants/contactInfo'
 import { useForm } from 'react-hook-form'
@@ -17,6 +23,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { findUnpaidInvoicesForCustomer, getInvoice, saveInvoice } from '../db/invoiceRepository'
 import { fromJson, toJson } from '../utils/jsonConverter'
+import HstToggle from '../components/HstToggle'
 import ResizeableTextArea from '../components/ResizeableTextArea'
 import UnpaidCustomerWarning from '../components/UnpaidCustomerWarning'
 import { COMPANY_NAME } from '../constants/constants'
@@ -101,7 +108,13 @@ function InvoiceEditor() {
   }
 
   const watchedItems = watch("items") ?? [];
-  const charges = chargeAmounts(watch());
+  const watched = watch();
+  const charges = chargeAmounts(watched);
+  // The names typed for the fees that carry one, and which fees HST is being
+  // charged on. Both come off the form rather than the registry: what a fee is
+  // called and whether it is taxed are this invoice's answers, not the app's.
+  const chargeLabels = chargeNames(watched);
+  const taxedCharges = chargeTaxFlags(watched);
   const date = watch("date") || new Date();
   const invoiceNo = watch("invoiceNo") || "";
   const status = watch("status") ?? DEFAULT_INVOICE_STATUS;
@@ -197,7 +210,7 @@ function InvoiceEditor() {
   // fee is taxed and which is not is settled once, in the charge registry.
   // It is a handful of additions over items already in memory, so it costs
   // less than the dependency list memoising it would need.
-  const breakdown = breakdownOf({ items: watchedItems, ...charges })
+  const breakdown = breakdownOf({ items: watchedItems, ...charges, taxedCharges })
   const calculatedHST = breakdown.tax
   const calculatedTotal = breakdownTotal(breakdown)
 
@@ -206,22 +219,57 @@ function InvoiceEditor() {
   // named like labour is counted as labour there.
   const calculatedSubtotal = watchedItems.reduce((sum, item) => sum + (item.amount || 0), 0)
 
-  // One width for every fee's box, taken from the longest figure among them,
+  // Every figure the totals block prints, spelled the way it is printed: the
+  // fees as their boxes hold them, and the three lines around them as the
+  // formatter writes them, thousands separators and the total's dollar sign
+  // included.
+  const figures = [
+    ...CHARGES.map(charge => charges[charge.key].toFixed(2)),
+    currencyFormatter.format(calculatedSubtotal).slice(1),
+    currencyFormatter.format(calculatedHST).slice(1),
+    currencyFormatter.format(calculatedTotal),
+  ]
+
+  // One width for every figure in the block, taken from the longest of them,
   // rather than a fixed width: a four-figure charge is then neither clipped on
-  // screen nor cut off in the exported PDF. Sizing them together is what keeps
-  // the labels in a column -- widening one box alone would leave its label
-  // sitting out to the left of its neighbours. The rows are right-justified, so
-  // the width they gain falls to the left and the figures stay where they are.
-  // The added 14px is the box's own right padding, which holds its figure the
-  // same distance off the edge as the Subtotal, HST and Total lines.
-  const chargeWidth = `calc(${Math.max(
+  // screen nor cut off in the exported PDF. Sizing them together is what puts
+  // the colons in a column -- every row ends in a box this wide, so each label
+  // stops at the same place, whatever the figure beside it happens to be. The
+  // rows are right-justified, so the width they gain falls to the left and the
+  // figures stay where they are. The spare character keeps the longest figure
+  // off the colon, and the added 14px is each box's own right padding, which
+  // holds every figure the same distance off the edge.
+  const figureWidth = `calc(${Math.max(
     5,
-    ...CHARGES.map(charge => charges[charge.key].toFixed(2).length + 1),
+    ...figures.map(figure => figure.length + 1),
   )}ch + 14px)`
+
+  // How many line items HST is being charged on: what the subtotal's box
+  // shows, and what clicking it flips.
+  const taxedItemCount = watchedItems.filter(item => item.taxable === true).length
+  const allItemsTaxed = watchedItems.length > 0 && taxedItemCount === watchedItems.length
+
+  const taxTitle = (on: boolean, what: string) =>
+    `${on ? 'Stop charging' : 'Charge'} HST on ${what}`
+
+  const toggleItemTax = (index: number) =>
+    setValue(`items.${index}.taxable`, watchedItems[index]?.taxable !== true, { shouldDirty: true })
+
+  /** The subtotal's box covers every item beneath it: all on, or all off. */
+  const toggleAllItemTax = () =>
+    setValue(
+      'items',
+      (getValues('items') ?? []).map(item => ({ ...item, taxable: !allItemsTaxed })),
+      { shouldDirty: true },
+    )
+
+  const toggleChargeTax = (key: ChargeKey) =>
+    setValue(`taxedCharges.${key}`, !taxedCharges[key], { shouldDirty: true })
 
   const handleAddItem = () => {
     const currentList = getValues('items') || [];
-    setValue("items", [...currentList, {id: currentItemCount, name: "New item", amount: 0}])
+    // Nothing is taxed until it is ticked, a new item included.
+    setValue("items", [...currentList, {id: currentItemCount, name: "New item", amount: 0, taxable: false}])
     setCurrentItemCount(prev => prev + 1)
   }
 
@@ -367,10 +415,11 @@ function InvoiceEditor() {
                 <table className="w-full text-sm mb-4 table-fixed"> 
                   <thead>
                     <tr className="bg-gray-100">
-                      <th className="border p-2 text-left w-1/2">Description</th> 
-                      <th className="border p-2 text-right w-1/6">Quantity</th>
-                      <th className="border p-2 text-right w-1/6">Unit Price</th>
-                      <th className="border p-2 text-right w-1/6">Total</th>
+                      <th className="border p-2 text-left w-[42%]">Description</th> 
+                      <th className="border p-2 text-right w-[14%]">Quantity</th>
+                      <th className="border p-2 text-right w-[16%]">Unit Price</th>
+                      <th className="border p-2 text-right w-[18%]">Total</th>
+                      <th className="no-export border p-2 text-center w-[10%]">HST</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -414,17 +463,90 @@ function InvoiceEditor() {
                         <td className="border p-2 text-right text-slate-800 text-sm py-1 hover:bg-slate-100 hover:pl-2 hover:py-2">
                           {currencyFormatter.format(calculateAmount(index))}
                         </td>
+                        <td className="no-export border p-2">
+                          <div className="flex justify-center">
+                            <HstToggle
+                              on={watchedItems[index]?.taxable === true}
+                              title={taxTitle(
+                                watchedItems[index]?.taxable === true,
+                                item.name?.trim() || 'this item',
+                              )}
+                              onToggle={() => toggleItemTax(index)}
+                            />
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                  <div className="w-full flex flex-col align-right">
-                    <div className="text-sm text-right pb-1 label-padded">Subtotal: &nbsp;&nbsp; {currencyFormatter.format(calculatedSubtotal).slice(1)}</div>
+                  <div className="group w-full flex flex-col align-right">
+                    <div className="text-sm pb-1 flex flex-row justify-end items-center">
+                      <div className="no-export flex items-center pr-2">
+                        <HstToggle
+                          on={allItemsTaxed}
+                          partial={taxedItemCount > 0 && !allItemsTaxed}
+                          title={taxTitle(allItemsTaxed, 'every item above')}
+                          onToggle={toggleAllItemTax}
+                        />
+                      </div>
+                      <span>Subtotal:</span>
+                      <span style={{ width: figureWidth }} className="label-padded text-right">
+                        {currencyFormatter.format(calculatedSubtotal).slice(1)}
+                      </span>
+                    </div>
                 {CHARGES.map(charge => {
                       const field = register(charge.key, { valueAsNumber: true })
+                      // What this invoice calls the fee, falling back to the
+                      // registry's name for it while nothing has been typed.
+                      const name = 'nameKey' in charge ? chargeLabels[charge.nameKey].trim() : ''
+                      // A fee the invoice names for itself, left both unnamed
+                      // and at zero, is no part of this invoice: it is out of
+                      // the printed copy, and out of sight on screen until the
+                      // pointer is over the totals block, so an invoice that
+                      // never needed it does not carry an empty row for it.
+                      const unused = 'nameKey' in charge && name === '' && charges[charge.key] === 0
                       return (
-                        <div key={charge.key} className="flex flex-row justify-end align-center">
-                          <div className="pt-1 text-sm text-right">{charge.label}:</div>
+                        <div
+                          key={charge.key}
+                          // `focus-within` outlives the hover: naming the fee
+                          // is what stops it being unused, so clearing the name
+                          // back to empty would otherwise pull the box out from
+                          // under the cursor mid-edit. It also leaves the row
+                          // reachable by tab, which hover alone would not.
+                          className={`flex-row justify-end align-center ${
+                            unused
+                              ? 'no-export hidden group-hover:flex focus-within:flex'
+                              : 'flex'
+                          }`}
+                        >
+                          <div className="no-export flex items-center pr-2">
+                            <HstToggle
+                              on={taxedCharges[charge.key]}
+                              title={taxTitle(
+                                taxedCharges[charge.key],
+                                `the ${(name || charge.label).toLowerCase()}`,
+                              )}
+                              onToggle={() => toggleChargeTax(charge.key)}
+                            />
+                          </div>
+                          {'nameKey' in charge ? (
+                            <>
+                              <input
+                                {...register(charge.nameKey)}
+                                type="text"
+                                placeholder={charge.label}
+                                // Sized to the name it holds, the way the fee
+                                // boxes are: the row is right-justified, so the
+                                // box grows leftwards and the tick stays beside
+                                // the name rather than out in white space.
+                                style={{ width: `${Math.max(charge.label.length, name.length) + 1}ch` }}
+                                className="h-[30px] max-w-[260px] text-right text-slate-800 text-sm outline-none py-1 rounded-md hover:bg-slate-100 placeholder:italic placeholder:text-gray-500 autofill:bg-white"
+                              />
+                              <div className="pt-1 text-sm">:</div>
+                            </>
+                          ) : (
+                            <div className="pt-1 text-sm text-right">{charge.label}:</div>
+                          )}
                           <div>
                             <input
                               {...field}
@@ -445,15 +567,32 @@ function InvoiceEditor() {
                               type="number"
                               min="0"
                               step="0.01"
-                              style={{ width: chargeWidth }}
+                              style={{ width: figureWidth }}
                               className="charge-input label-padded h-[30px] max-w-[180px] text-right text-slate-800 text-sm outline-none py-1 hover:bg-slate-100  placeholder:italic placeholder:text-gray-500 autofill:bg-white"
                             />
                           </div>
                         </div>
                       )
                     })}
-                    <div className="text-sm text-right pb-1 label-padded">HST: &nbsp;&nbsp; {currencyFormatter.format(calculatedHST).slice(1)}</div>
-                    <div className="text-sm font-bold text-right pt-1 label-padded">Total: {currencyFormatter.format(calculatedTotal)}</div>
+                    <div className="text-sm pb-1 flex flex-row justify-end">
+                      <span>HST:</span>
+                      <span style={{ width: figureWidth }} className="label-padded text-right">
+                        {currencyFormatter.format(calculatedHST).slice(1)}
+                      </span>
+                    </div>
+                    {/*
+                      * The bold sits on the words rather than the row: `ch` is
+                      * the width of a digit in the element's own font, and a
+                      * bold digit is the wider of the two, so a bold box would
+                      * come out a couple of pixels broader than the boxes above
+                      * it and carry this colon out of line with theirs.
+                      */}
+                    <div className="text-sm pt-1 flex flex-row justify-end">
+                      <span className="font-bold">Total:</span>
+                      <span style={{ width: figureWidth }} className="label-padded text-right">
+                        <span className="font-bold">{currencyFormatter.format(calculatedTotal)}</span>
+                      </span>
+                    </div>
                   </div>
               </div>
 

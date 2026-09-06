@@ -2,11 +2,17 @@ import { createInvoiceUuid, db, type CustomerRecord, type InvoiceRecord, type It
 import {
   DEFAULT_INVOICE_STATUS,
   isInvoiceStatus,
+  storedItemTaxable,
   type Invoice,
   type InvoiceStatus,
 } from '../models/Invoice';
 import { breakdownOf, breakdownTotal } from '../models/AmountType';
-import { chargeAmounts, type ChargeAmounts } from '../models/charges';
+import {
+  chargeAmounts,
+  chargeNames,
+  chargeTaxFlags,
+  storedChargeTaxFlags,
+} from '../models/charges';
 import { parseInvoiceDate } from '../utils/invoiceDate';
 import type { InvoiceStat } from '../utils/invoiceStats';
 
@@ -73,16 +79,27 @@ const num = (value: number | undefined, fallback = 0) =>
 const optionalNum = (value: number | undefined) =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 
-/** What one stored invoice bills, split the way the reports read it. */
-const breakdownFor = (invoice: ChargeAmounts, items: ItemRecord[]) =>
-  breakdownOf({ items, ...chargeAmounts(invoice) });
+/**
+ * What one stored invoice bills, split the way the reports read it.
+ *
+ * The two fields that predate the HST toggles -- the per-item flag and the
+ * per-fee ones -- are read the way the invoice was actually billed, so a row
+ * the migration has not reached still totals what it was sent out for rather
+ * than losing its tax.
+ */
+const breakdownFor = (invoice: InvoiceRecord, items: ItemRecord[]) =>
+  breakdownOf({
+    items: items.map(item => ({ ...item, taxable: storedItemTaxable(item.taxable) })),
+    ...chargeAmounts(invoice),
+    taxedCharges: storedChargeTaxFlags(invoice),
+  });
 
 /**
  * The invoice total, HST included -- the same figure the editor shows. Taken
  * off the report breakdown rather than summed separately, so the list, the
  * reports and the editor can never disagree about what an invoice came to.
  */
-const invoiceTotal = (invoice: ChargeAmounts, items: ItemRecord[]) =>
+const invoiceTotal = (invoice: InvoiceRecord, items: ItemRecord[]) =>
   breakdownTotal(breakdownFor(invoice, items));
 
 /** Joins the three tables back into the shape the invoice form works with. */
@@ -115,8 +132,11 @@ const toInvoice = (
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       amount: num(item.amount),
+      taxable: storedItemTaxable(item.taxable),
     })),
   ...chargeAmounts(invoice),
+  ...chargeNames(invoice),
+  taxedCharges: storedChargeTaxFlags(invoice),
 });
 
 /**
@@ -159,6 +179,9 @@ export async function saveInvoice(invoice: Invoice, id?: number): Promise<number
       description: invoice.description ?? '',
       recommendation: invoice.recommendation ?? '',
       ...chargeAmounts(invoice),
+      ...chargeNames(invoice),
+      // Straight off the form: a fee is taxed only where it was ticked.
+      taxedCharges: chargeTaxFlags(invoice),
       createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     };
@@ -178,6 +201,7 @@ export async function saveInvoice(invoice: Invoice, id?: number): Promise<number
         quantity: optionalNum(item.quantity),
         unitPrice: optionalNum(item.unitPrice),
         amount: num(item.amount),
+        taxable: item.taxable === true,
       })),
     );
 
@@ -376,9 +400,14 @@ export function normalizeImportedInvoice(parsed: unknown): Invoice | null {
         quantity: optionalNum(item.quantity as number | undefined),
         unitPrice: optionalNum(item.unitPrice as number | undefined),
         amount: num(item.amount as number | undefined),
+        taxable: storedItemTaxable(item.taxable),
       }
     }),
     ...chargeAmounts(raw),
+    ...chargeNames(raw),
+    // A file written before the toggles existed carries none, and is read the
+    // way it was billed rather than as an invoice with HST switched off.
+    taxedCharges: storedChargeTaxFlags(raw),
     // Files exported before parking replaced the two "other" fees carry those
     // instead; their money is folded in rather than dropped on the way back.
     ...(raw.parkingCost === undefined && {

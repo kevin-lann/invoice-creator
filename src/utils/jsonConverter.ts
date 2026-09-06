@@ -1,4 +1,5 @@
 import { Invoice } from "../models/Invoice";
+import { normalizeImportedInvoice } from "../db/invoiceRepository";
 import saveAs from 'file-saver'
 
 export const saveJson = (data: unknown, filename: string) => {
@@ -8,8 +9,15 @@ export const saveJson = (data: unknown, filename: string) => {
 
 export const toJson = (data: Invoice, filename: string) => saveJson(data, filename)
 
+/**
+ * One invoice out of an uploaded file, read the same way the invoice list
+ * reads a backup: the fields that fell out of the format along the way are
+ * folded back in, so a file saved before parking replaced the two "other"
+ * fees, or before HST became a per-line toggle, still opens totalling what it
+ * was sent out for.
+ */
 export const fromJson = async (file: File): Promise<Invoice | null> =>
-  await readJsonFile(file) as Invoice | null
+  normalizeImportedInvoice(await readJsonFile(file))
 
 export const readJsonFile = async (file: File): Promise<unknown | null> => {
   return new Promise<unknown | null>((resolve, reject) => {
