@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ChevronDown, ChevronUp, FilePlus2, SaveAll, Trash2, Upload } from 'lucide-react'
+import { ChevronDown, ChevronUp, FilePlus2, SaveAll, Search, Trash2, Upload, X } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   deleteInvoice,
@@ -106,21 +106,30 @@ function InvoicesList() {
   const [status, setStatus] = useState<string | null>(null)
   // The list opens most recent invoice first; clicking a column takes it from there.
   const [sort, setSort] = useState<Sort>({ key: 'date', direction: 'desc' })
+  const [search, setSearch] = useState('')
+
+  // Matched case-insensitively on any part of the number, so "07" finds
+  // "INV-2024-07" without the typist having to remember the whole prefix.
+  const query = search.trim().toLowerCase()
 
   const handleSort = (key: SortKey) =>
     setSort(current => current.key === key
       ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
       : { key, direction: defaultDirection[key] })
 
-  const sortedInvoices = useMemo(() => {
+  const visibleInvoices = useMemo(() => {
     if (!invoices)
       return invoices
+
+    const matching = query === ''
+      ? invoices
+      : invoices.filter(invoice => invoice.invoiceNo.toLowerCase().includes(query))
 
     const sign = sort.direction === 'asc' ? 1 : -1
     const blank = isBlank[sort.key]
     const compare = comparators[sort.key]
 
-    return invoices.slice().sort((a, b) => {
+    return matching.slice().sort((a, b) => {
       const aBlank = blank(a)
       const bBlank = blank(b)
       if (aBlank !== bBlank)
@@ -131,7 +140,7 @@ function InvoicesList() {
       // rows never shuffle between renders.
       return result !== 0 ? result : b.updatedAt - a.updatedAt
     })
-  }, [invoices, sort])
+  }, [invoices, sort, query])
 
   useEffect(() => {
     if (status === null)
@@ -265,58 +274,96 @@ function InvoicesList() {
             </p>
           </div>
         ) : (
-          <table className="w-full text-sm table-fixed">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="border p-2 text-left w-[17%]">Invoice #</th>
-                <SortableHeader label="Date" sortKey="date" sort={sort} onSort={handleSort} className="w-[16%]" />
-                <SortableHeader label="Address" sortKey="address" sort={sort} onSort={handleSort} className="w-[27%]" />
-                <SortableHeader label="Status" sortKey="status" sort={sort} onSort={handleSort} className="w-[14%]" />
-                <th className="border p-2 text-right w-[16%]" title="Total billed, HST included">Total</th>
-                <th className="border p-2 w-[46px]"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedInvoices?.map(invoice => (
-                <tr
-                  key={invoice.id}
-                  className="cursor-pointer hover:bg-slate-100"
-                  onClick={() => navigate(`/invoices/${invoice.id}`)}
-                  title={`Last saved ${savedAtFormatter.format(invoice.updatedAt)}\nid ${invoice.uuid}`}
+          <>
+            <div className="relative mb-3">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              <input
+                type="search"
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                placeholder="Search by invoice number"
+                aria-label="Search by invoice number"
+                className="w-full border border-slate-300 rounded-md text-sm pl-9 pr-9 py-2 outline-none placeholder:italic placeholder:text-gray-500 focus:border-blue-500 [&::-webkit-search-cancel-button]:hidden"
+              />
+              {search !== '' && (
+                <button
+                  type="button"
+                  title="Clear search"
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  onClick={() => setSearch('')}
                 >
-                  <td className="border p-2">{invoice.invoiceNo || '--'}</td>
-                  <td className="border p-2">{invoice.date || '--'}</td>
-                  <td className="border p-2">
-                    <div>{invoice.customerAddress || 'No address'}</div>
-                    <div className="text-xs text-gray-500">{invoice.customerCity}</div>
-                  </td>
-                  <td className="border p-2">
-                    <span className={`text-xs px-2 py-1 rounded-full border ${invoiceStatusStyles[invoice.status].badge}`}>
-                      {invoiceStatusStyles[invoice.status].label}
-                    </span>
-                  </td>
-                  <td className="border p-2 text-right">
-                    <div>{currencyFormatter.format(invoice.total)}</div>
-                    <div className="text-xs text-gray-500">
-                      {invoice.itemCount} item{invoice.itemCount === 1 ? '' : 's'}
-                    </div>
-                  </td>
-                  <td className="border p-2">
-                    <div className="flex flex-row justify-center items-center">
-                      <button
-                        type="button"
-                        title="Delete invoice"
-                        className="text-gray-500 hover:text-red-500"
-                        onClick={event => handleDelete(event, invoice.id, invoice.invoiceNo || String(invoice.id))}
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {visibleInvoices?.length === 0 ? (
+              <p className="text-sm text-gray-500 py-12 text-center">
+                No invoices match invoice number "{search.trim()}".
+              </p>
+            ) : (
+              <>
+                {query !== '' && (
+                  <p className="text-sm text-slate-600 mb-2">
+                    Showing {describeCount(visibleInvoices?.length ?? 0)} of {invoices.length}.
+                  </p>
+                )}
+                <table className="w-full text-sm table-fixed">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border p-2 text-left w-[17%]">Invoice #</th>
+                      <SortableHeader label="Date" sortKey="date" sort={sort} onSort={handleSort} className="w-[16%]" />
+                      <SortableHeader label="Address" sortKey="address" sort={sort} onSort={handleSort} className="w-[27%]" />
+                      <SortableHeader label="Status" sortKey="status" sort={sort} onSort={handleSort} className="w-[14%]" />
+                      <th className="border p-2 text-right w-[16%]" title="Total billed, HST included">Total</th>
+                      <th className="border p-2 w-[46px]"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleInvoices?.map(invoice => (
+                      <tr
+                        key={invoice.id}
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => navigate(`/invoices/${invoice.id}`)}
+                        title={`Last saved ${savedAtFormatter.format(invoice.updatedAt)}\nid ${invoice.uuid}`}
                       >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                        <td className="border p-2">{invoice.invoiceNo || '--'}</td>
+                        <td className="border p-2">{invoice.date || '--'}</td>
+                        <td className="border p-2">
+                          <div>{invoice.customerAddress || 'No address'}</div>
+                          <div className="text-xs text-gray-500">{invoice.customerCity}</div>
+                        </td>
+                        <td className="border p-2">
+                          <span className={`text-xs px-2 py-1 rounded-full border ${invoiceStatusStyles[invoice.status].badge}`}>
+                            {invoiceStatusStyles[invoice.status].label}
+                          </span>
+                        </td>
+                        <td className="border p-2 text-right">
+                          <div>{currencyFormatter.format(invoice.total)}</div>
+                          <div className="text-xs text-gray-500">
+                            {invoice.itemCount} item{invoice.itemCount === 1 ? '' : 's'}
+                          </div>
+                        </td>
+                        <td className="border p-2">
+                          <div className="flex flex-row justify-center items-center">
+                            <button
+                              type="button"
+                              title="Delete invoice"
+                              className="text-gray-500 hover:text-red-500"
+                              onClick={event => handleDelete(event, invoice.id, invoice.invoiceNo || String(invoice.id))}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </>
         )}
       </div>
     </div>

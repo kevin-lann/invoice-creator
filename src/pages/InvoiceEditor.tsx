@@ -28,7 +28,14 @@ import ResizeableTextArea from '../components/ResizeableTextArea'
 import UnpaidCustomerWarning from '../components/UnpaidCustomerWarning'
 import { COMPANY_NAME } from '../constants/constants'
 import { invoiceFileName } from '../utils/invoiceFileName'
+import { useAutosave } from '../hooks/useAutosave'
 import { currencyFormatter } from '../utils/currency'
+
+/** The clock time beside the save indicator: "2:31 p.m.", no seconds. */
+const savedAtFormatter = new Intl.DateTimeFormat('en-CA', {
+  hour: 'numeric',
+  minute: '2-digit',
+})
 
 function InvoiceEditor() {
 
@@ -56,11 +63,67 @@ function InvoiceEditor() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const routeId = id !== undefined && /^\d+$/.test(id) ? Number(id) : undefined
+
+  // The same id twice over. The state is what the buttons read; the ref is
+  // what the writes read, because a blur handler built on an earlier render
+  // would still be holding the id from then -- and on a new invoice, whose id
+  // is undefined until its first write lands, that means filing it twice.
   const [savedId, setSavedId] = useState<number | undefined>(routeId)
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const savedIdRef = useRef<number | undefined>(routeId)
+  /**
+   * The invoice the form is actually holding, which is not the same as the one
+   * the route names: between the two, the read is still in flight and the boxes
+   * are empty.
+   */
+  const loadedIdRef = useRef<number | undefined>(undefined)
+
+  const rememberSavedId = (id: number) => {
+    savedIdRef.current = id
+    loadedIdRef.current = id
+    setSavedId(id)
+  }
+
+  /** Writes the form to the database, giving a new invoice its row and route. */
+  const persistInvoice = async (data: Invoice) => {
+    const id = await saveInvoice(data, savedIdRef.current)
+    if (savedIdRef.current !== undefined)
+      return
+    rememberSavedId(id)
+    // Now that it has a row, the editor moves onto it, so a reload comes back
+    // to the invoice rather than to a blank form.
+    navigate(`/invoices/${id}`, { replace: true })
+  }
+
+  const worthSaving = (data: Invoice, forced: boolean) => {
+    // The route names an invoice the form has not been filled from yet. What
+    // is in the boxes is an empty form, not an edit of that invoice, and
+    // writing it would erase it -- so this one holds even for a save asked
+    // for by hand.
+    if (routeId !== undefined && loadedIdRef.current !== routeId)
+      return false
+    // An invoice with a row already keeps it up to date whatever it says.
+    if (forced || savedIdRef.current !== undefined)
+      return true
+    // A new one earns its row once it says who it is for. Before that the
+    // form is a blank the user may well walk away from, and autosaving it
+    // would leave an empty invoice in the list. Address and city are what the
+    // form itself insists on, so they are what counts as an invoice here too.
+    return (data.customerInfo?.address ?? '').trim() !== ''
+      && (data.customerInfo?.city ?? '').trim() !== ''
+  }
+
+  const { status: saveStatus, saveIfChanged, saveNow, markSaved } = useAutosave<Invoice>({
+    read: getValues,
+    write: persistInvoice,
+    worthSaving,
+  })
 
   useEffect(() => {
-    if (routeId === undefined)
+    // Nothing to load for a new invoice, and nothing to re-load for the one
+    // already open: the first autosave of a new invoice moves the route onto
+    // its id, and reading the database back here would overwrite whatever has
+    // been typed since.
+    if (routeId === undefined || routeId === loadedIdRef.current)
       return
 
     let cancelled = false
@@ -73,39 +136,20 @@ function InvoiceEditor() {
       }
       reset(stored)
       setCurrentItemCount(stored.items.length)
-      setSavedId(stored.id)
+      rememberSavedId(stored.id)
+      // The form now holds exactly what the database does, so the next blur
+      // has nothing to write. Opening an invoice is not editing it.
+      markSaved(getValues())
     }).catch(error => console.error('Failed to load invoice', error))
 
     return () => { cancelled = true }
-  }, [routeId, reset, navigate])
+  }, [routeId, reset, navigate, markSaved, getValues])
 
   // Effects run after paint, so this pulls the PDF chunk down in the background
   // without holding up the first render.
   useEffect(() => {
     import('../utils/pdfConverter').catch(() => {})
   }, [])
-
-  // Let the "Saved!" confirmation fade back to the normal label.
-  useEffect(() => {
-    if (saveState !== 'saved')
-      return
-    const timeout = setTimeout(() => setSaveState('idle'), 2000)
-    return () => clearTimeout(timeout)
-  }, [saveState])
-
-  const handleSaveToDatabase = async (data: Invoice) => {
-    setSaveState('saving')
-    try {
-      const id = await saveInvoice(data, savedId)
-      setSavedId(id)
-      setSaveState('saved')
-      if (savedId === undefined)
-        navigate(`/invoices/${id}`, { replace: true })
-    } catch (error) {
-      console.error('Failed to save invoice', error)
-      setSaveState('error')
-    }
-  }
 
   const watchedItems = watch("items") ?? [];
   const watched = watch();
@@ -146,6 +190,9 @@ function InvoiceEditor() {
       if (invoice) {
         reset(invoice); 
         setCurrentItemCount(invoice.items.length)
+        // Read in, not typed in: an uploaded file lands in the editor to be
+        // looked at, and only an edit of it goes on to the database.
+        markSaved(getValues())
       }
     }
   }
@@ -277,6 +324,12 @@ function InvoiceEditor() {
     const currentList = getValues('items');
     setValue('items', currentList.filter((_, i) => i !== index));
     setCurrentItemCount(prev => prev - 1)
+    // Nothing blurs when a row is deleted: the X is not focusable, so focus
+    // does not move, and the blur that mousedown does fire elsewhere carries
+    // the row that is about to go. Without this the row is off the form but
+    // still in the database until something else is edited. `setValue` has
+    // already written the shortened list, so this reads it as it now stands.
+    saveIfChanged()
   };
 
   // const handleUpdateItem = (index: number, field: string, newValue: string | number) => {
@@ -317,7 +370,13 @@ function InvoiceEditor() {
               
   return (
     <div className="w-full flex flex-col items-center min-h-screen">
-      <form onSubmit={onSubmit}>
+      {/*
+        * Autosave. React's onBlur is the native `focusout`, which bubbles, so
+        * this one handler covers every box on the form -- the fees' own blur
+        * handler included, since it has already rounded the figure into the
+        * form by the time the event reaches here.
+        */}
+      <form onSubmit={onSubmit} onBlur={saveIfChanged}>
         <div ref={printRef} className="bg-white shadow-lg rounded-lg p-8 w-[8.5in] max-w-2xl flex flex-col">
           
             <div id="export" className="flex flex-col pb-4">
@@ -345,8 +404,8 @@ function InvoiceEditor() {
                 </div>
                 <div className="text-align-right flex items-end flex-col gap-1">
                   <h2 className="font-bold">{COMPANY_NAME}</h2>
+                  <p className="text-sm">Email: {contactInfo.email}</p>
                   <p className="text-sm">Phone: {contactInfo.phone}</p>
-                  {/* <p className="text-sm">Email: {contactInfo.email}</p> */}
                   <p className="text-sm">Wechat ID: {contactInfo.weChatId}</p>
                 </div>
               </div>
@@ -639,21 +698,45 @@ function InvoiceEditor() {
             <div>Add new item</div>
           </button>
 
+          {/*
+            * Still here beside the autosave: it is what writes an invoice that
+            * has no address yet, and what a user who does not trust an unasked
+            * save reaches for. It is not disabled while a write is in flight --
+            * the queue folds a second click into the one already running.
+            */}
           <button 
-            className="bg-blue-600 text-white text-sm p-3 rounded-md flex gap-4 align-center hover:bg-blue-500 hover:shadow-xl active:scale-[.8] disabled:opacity-60" 
-            onClick={() => handleSaveToDatabase(getValues())}
+            className="bg-blue-600 text-white text-sm p-3 rounded-md flex gap-4 align-center hover:bg-blue-500 hover:shadow-xl active:scale-[.8]" 
+            onClick={saveNow}
             type="button"
             title={savedId === undefined ? 'Save invoice to database' : 'Update saved invoice'}
-            disabled={saveState === 'saving'}
           >
             <div><Database size={20}/></div>
-            <div>
-              {saveState === 'saving' ? 'Saving...'
-                : saveState === 'saved' ? 'Saved!'
-                : saveState === 'error' ? 'Failed'
-                : savedId === undefined ? 'Save' : 'Update'}
-            </div>
+            <div>{savedId === undefined ? 'Save' : 'Update'}</div>
           </button>
+
+          {/*
+            * What autosave has managed, in the one place both it and the
+            * button report to. Announced politely so it is not read out over
+            * whatever is being typed.
+            */}
+          <div className="flex items-center text-sm" aria-live="polite">
+            {saveStatus.state === 'saving' && (
+              <span className="text-slate-500">Saving...</span>
+            )}
+            {saveStatus.state === 'saved' && (
+              <span className="text-slate-500">
+                Saved {savedAtFormatter.format(saveStatus.at)}
+              </span>
+            )}
+            {saveStatus.state === 'error' && (
+              <span
+                className="text-red-600"
+                title="This invoice could not be written to the database. Nothing typed has been lost -- it is still on the form, and the next change tries again."
+              >
+                Not saved
+              </span>
+            )}
+          </div>
           <div className="absolute right-0 flex">
             <button
               className="p-2 text-gray-600"
