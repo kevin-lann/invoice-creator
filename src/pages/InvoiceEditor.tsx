@@ -297,7 +297,7 @@ function InvoiceEditor() {
   const allItemsTaxed = watchedItems.length > 0 && taxedItemCount === watchedItems.length
 
   const taxTitle = (on: boolean, what: string) =>
-    `${on ? 'Stop charging' : 'Charge'} Other on ${what}`
+    `${on ? 'Stop charging' : 'Charge'} HST on ${what}`
 
   const toggleItemTax = (index: number) =>
     setValue(`items.${index}.taxable`, watchedItems[index]?.taxable !== true, { shouldDirty: true })
@@ -478,7 +478,7 @@ function InvoiceEditor() {
                       <th className="border p-2 text-right w-[14%]">Quantity</th>
                       <th className="border p-2 text-right w-[16%]">Unit Price</th>
                       <th className="border p-2 text-right w-[18%]">Total</th>
-                      <th className="no-export border p-2 text-center w-[10%]">Other</th>
+                      <th className="no-export border p-2 text-center w-[10%]">HST</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -634,7 +634,7 @@ function InvoiceEditor() {
                       )
                     })}
                     <div className="text-sm pb-1 flex flex-row justify-end">
-                      <span>Other:</span>
+                      <span>HST:</span>
                       <span style={{ width: figureWidth }} className="label-padded text-right">
                         {currencyFormatter.format(calculatedHST).slice(1)}
                       </span>
