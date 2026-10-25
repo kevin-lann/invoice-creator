@@ -634,7 +634,7 @@ function InvoiceEditor() {
                       )
                     })}
                     <div className="text-sm pb-1 flex flex-row justify-end">
-                      <span>HST:</span>
+                      <span>Other:</span>
                       <span style={{ width: figureWidth }} className="label-padded text-right">
                         {currencyFormatter.format(calculatedHST).slice(1)}
                       </span>
