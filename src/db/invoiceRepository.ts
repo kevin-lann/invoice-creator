@@ -209,6 +209,11 @@ export async function saveInvoice(invoice: Invoice, id?: number): Promise<number
   });
 }
 
+/** Changes only an invoice's status, leaving the rest of it as saved. */
+export async function setInvoiceStatus(id: number, status: InvoiceStatus): Promise<void> {
+  await db.invoices.update(id, { status, updatedAt: Date.now() });
+}
+
 /** Joins the three tables back together for a single invoice. */
 async function readInvoice(id: number): Promise<Invoice | undefined> {
   return db.transaction('r', db.customers, db.invoices, db.items, async () => {

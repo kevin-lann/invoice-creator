@@ -7,13 +7,19 @@ import {
   exportAllInvoices,
   importInvoiceFile,
   listInvoices,
+  setInvoiceStatus,
   type InvoiceSummary,
 } from '../db/invoiceRepository'
+import { INVOICE_STATUSES, type InvoiceStatus } from '../models/Invoice'
 import { readJsonFile, saveJson } from '../utils/jsonConverter'
 import { formatDateAsYYYYMMDD } from '../utils/formatDate'
 import { currencyFormatter } from '../utils/currency'
 import { invoiceStatusSortOrder, invoiceStatusStyles } from '../constants/invoiceStatus'
 import { parseInvoiceDate } from '../utils/invoiceDate'
+
+/** The status a click on the badge switches to, cycling through all of them. */
+const nextStatus = (current: InvoiceStatus): InvoiceStatus =>
+  INVOICE_STATUSES[(INVOICE_STATUSES.indexOf(current) + 1) % INVOICE_STATUSES.length]
 
 const describeCount = (count: number) => `${count} invoice${count === 1 ? '' : 's'}`
 
@@ -216,6 +222,17 @@ function InvoicesList() {
     }
   }
 
+  /** Moves an invoice on to its next status right from the list. */
+  const handleToggleStatus = async (event: React.MouseEvent, id: number, current: InvoiceStatus) => {
+    event.stopPropagation()
+    try {
+      await setInvoiceStatus(id, nextStatus(current))
+    } catch (error) {
+      console.error('Failed to update invoice status', error)
+      alert('Could not update this invoice\'s status.')
+    }
+  }
+
   return (
     <div className="w-full flex flex-col items-center min-h-screen">
       <div className="bg-white shadow-lg rounded-lg p-8 w-[8.5in] max-w-2xl flex flex-col">
@@ -335,9 +352,14 @@ function InvoicesList() {
                           <div className="text-xs text-gray-500">{invoice.customerCity}</div>
                         </td>
                         <td className="border p-2">
-                          <span className={`text-xs px-2 py-1 rounded-full border ${invoiceStatusStyles[invoice.status].badge}`}>
+                          <button
+                            type="button"
+                            title={`Mark this invoice as ${invoiceStatusStyles[nextStatus(invoice.status)].label.toLowerCase()}`}
+                            className={`text-xs px-2 py-1 rounded-full border hover:opacity-75 ${invoiceStatusStyles[invoice.status].badge}`}
+                            onClick={event => handleToggleStatus(event, invoice.id, invoice.status)}
+                          >
                             {invoiceStatusStyles[invoice.status].label}
-                          </span>
+                          </button>
                         </td>
                         <td className="border p-2 text-right">
                           <div>{currencyFormatter.format(invoice.total)}</div>
